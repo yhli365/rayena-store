@@ -1,0 +1,117 @@
+人对象存储预研系统测试用例
+
+>>>>>>>>>>>>>>>>>>>功能测试
+#)HBase建表
+$ hadoop jar ayena-store-1.0.jar htable -Dtable.prefix=ft -Dtype=ren -DnumRegions=50 -createTable
+
+$ echo 'list' | hbase shell
+输出结果有以下表:ftrenbase,ftreninfo
+
+#)HBase删表
+$ hadoop jar ayena-store-1.0.jar htable -Dtable.prefix=ft -Dtype=ren -dropTable
+
+$ echo 'list' | hbase shell
+输出结果没有以下表:ftrenbase,ftreninfo
+
+#)人对象临时档案归并入库
+$ hadoop jar ayena-store-1.0.jar htable -Dtable.prefix=ft -Dtype=ren -load object_ren.bcp
+
+#)人对象临时档案归并入库MR
+$ hadoop jar ayena-store-1.0.jar dfs -upload object_ren.bcp /yhli/input
+$ hadoop jar ayena-store-1.0.jar dfs -Dcodec=SnappyCodec -upload object_ren.bcp /yhli/input
+$ hdfs dfs -ls /yhli/input/object_ren.*
+$ hdfs dfs -get /yhli/input/object_ren.*
+
+$ hdfs dfs -ls /yhli/output/object_ren
+$ hdfs dfs -rm -r /yhli/output/object_ren
+$ hadoop jar ayena-store-1.0.jar object.merge -Dtable.prefix=ft -Dtype=ren /yhli/input/object_ren.pb.lzo_deflate /yhli/output/object_ren
+$ hadoop jar ayena-store-1.0.jar object.merge -Dtable.prefix=ft -Dtype=ren /yhli/input/object_ren.pb.snappy /yhli/output/object_ren2
+
+$ hbase shell
+> count 'ftrenbase'
+> count 'ftreninfo'
+统计条数和预期结果相同
+
+#)人对象档案查询 q.info参数：对象类型,对象标识
+$hadoop jar ayena-store-1.0.jar htable -Dtable.prefix=ft -Dtype=ren -q.info qq.com 888001
+
+#)人对象档案查询 q.base参数：对象类型,对象标识,可选维度[数据源,应用,行为]
+$hadoop jar ayena-store-1.0.jar htable -Dtable.prefix=ft -Dtype=ren -q.base qq.com 888001
+$hadoop jar ayena-store-1.0.jar htable -Dtable.prefix=ft -Dtype=ren -q.base qq.com 888002 116
+
+输出结果符合预期
+
+#)人对象档案删除 delete参数：对象类型,对象标识
+$hadoop jar ayena-store-1.0.jar htable -Dtable.prefix=ft -Dtype=ren -delete qq.com 888001
+
+重新执行人对象档案查询该对象，无结果输出
+
+
+---------------------------------------------------
+--#SOLR索引人对象档案info,base
+启用SOLR索引人对象档案info,base
+执行人对象临时档案归并入库
+
+通过SOLR管理界面检索，结果符合预期
+
+前提条件：建立SOLR索引集合(reninfo,renbase)
+#上传Solr配置文件到ZK:
+$java -classpath .:/yhli/solr/solrlib/* org.apache.solr.cloud.ZkCLI -zkhost runs251190:2181,runs251191:2181,runs251192:2181 -cmd upconfig -confdir /yhli/solr/solrconfig/reninfo/conf/ -confname reninfo
+#新建Collection与配置的关联:
+$java -classpath .:/yhli/solr/solrlib/* org.apache.solr.cloud.ZkCLI -zkhost runs251190:2181,runs251191:2181,runs251192:2181 -cmd linkconfig -collection reninfo -confname reninfo
+#建立可以通过URL访问的collection
+http://runs251190:8080/solr/admin/collections?action=CREATE&name=reninfo&numShards=5&replicationFactor=1
+#清空Solr表bcpdataTest的数据
+http://runs251190:8080/solr/reninfo/update/?stream.body=<delete><query>*:*</query></delete>&stream.contentType=text/xml;charset=utf-8&commit=true
+
+>>>>>>>>>>>>>>>>>>>性能测试
+$ hdfs dfs -rm -r /testdata/ren/20150102
+$ hadoop jar ayena-store-1.0.jar object.gen -Dmapred.job.name=objectgen -DnrFiles=3 -DfileSize=100 -Ddate=20150102 -D/testdata/ren/20150102
+$ hdfs dfs -ls /testdata/ren/20150102
+$ hdfs dfs -ls /benchmarks/ObjectData
+
+--#使用模拟数据生成MR产生
+#修改人对象数据集元数据配置(5个单值属性变更(最多3个不同值),2个多值属性变更(最多10个不同值),3个不变更)
+$hdfs dfs -text /run/ayena/objectrenvt99.xml
+#产生10亿条初始记录
+$ hdfs dfs -rm -r /benchmarks/ren/20140630
+$ hadoop jar objectstore-1.0.jar object.gen -Dds=objectrenvt99 -Dnum=1000000000 -Dstart=100000 -Dend=1000100000 -Dtimerange=20140101,20140630 -Dmaps=30 /benchmarks/ren/20140630
+#产生指定5天各1亿条待归并临时对象(20141201-20141205)
+$hdfs dfs -rm -r /benchmarks/ren/20141201
+$hadoop jar objectstore-1.0.jar object.gen -Dds=objectrenvt99 -Dnum=100000000 -Dstart=10000000 -Dend=110000000 -Dtimerange=20141201 -Dmaps=30 /benchmarks/ren/20141201
+$hadoop jar objectstore-1.0.jar object.gen -Dds=objectrenvt99 -Dnum=100000000 -Dstart=10000000 -Dend=110000000 -Dtimerange=20141205 -Dmaps=30 /benchmarks/ren/20141205
+$hdfs dfs -du /benchmarks/ren/
+记录作业执行时间、输出数据量、集群性能
+
+--#入库性能测试
+1)对10亿条初始记录进行归并入库
+2)分别对指定5天各1亿条待归并临时对象进行归并入库(20141201-20141205)
+记录上述作业执行时间、输出数据量、集群性能
+
+分析作业执行情况，评估是否符合预期
+
+--#查询性能测试
+#选择性能测试工具并进行配置如jmeter,loadrunner
+不进行归并入库的前提下，测试在不同并发量(5,20,100,500)下查询10w对象档案的查询性能
+进行归并入库的前提下，测试在不同并发量(5,20,100,500)下查询10w对象档案的查询性能
+
+分析执行情况，评估是否符合预期
+
+>>>>>>>>>>>>>>>>>>>>
+JOB_ID
+JOB_NAME
+开始时间
+结束时间
+耗时
+Maps
+Reduces
+原始对象数
+原始对象存储空间
+BASE新对象数
+BASE新对象存储空间
+BASE更新对象
+BASE更新对象存储空间
+INFO新对象数
+INFO新对象存储空间
+INFO更新对象
+INFO更新对象存储空间

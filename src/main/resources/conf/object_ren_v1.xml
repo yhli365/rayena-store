@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<object type="ren">
+	<column code="A000001" name="元数据版本" store="" />
+	<column code="A010001" name="对象类型" store="" />
+	<column code="A010002" name="对象标识" store="" />
+	<column code="H010014" name="截获时间" store="" />
+	<column code="B050016" name="数据来源(维度)" store="dimension" />
+	<column code="H010001" name="应用(维度)" store="dimension" />
+	<column code="H010003" name="行为(维度)" store="dimension" />
+	<column code="B010001" name2="姓名" store="single" />
+	<column code="B010011" name="SEXCODE" name2="性别" store="single" />
+	<column code="B010007" name="别名" store="multi" separator="," />
+</object>

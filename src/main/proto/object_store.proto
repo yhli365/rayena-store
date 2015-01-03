@@ -1,0 +1,39 @@
+// @author Yanhong Lee
+// @date 2014-12-25 init 
+package com.run.ayena.pbf;
+option java_package = "com.run.ayena.pbf";
+
+//存储对象属性(多值属性每个值一条记录)
+message StoreAttr {
+	required string code = 1; //属性编码
+	required string value = 2; //属性值
+	optional uint32 count = 3; //发现次数
+	optional uint32 day_count = 4; //发现天数
+	optional uint32 first_time = 5; //首次时间
+	optional uint32 last_time = 6; //末次时间
+	optional string protocol = 7; //H010001应用(维度)
+	optional string action = 8; //H010003行为(维度)
+	repeated uint32 day_values = 9 [packed=true]; //日期列表
+	repeated uint32 day_stats = 10 [packed=true]; //按天统计值
+}
+
+//存储对象档案
+message StoreBase {
+	repeated StoreAttr props = 1; //对象属性列表
+	optional string type = 16; //A010001对象类型
+	optional string oid = 17; //A010002对象标识
+	optional string data_source = 18; //B050016数据来源(维度)
+}
+
+//存储对象最新信息
+message StoreInfo {
+	repeated StoreAttr props = 1; //对象属性列表
+	optional string type = 16; //A010001对象类型
+	optional string oid = 17; //A010002对象标识
+	optional uint32 count = 3; //发现次数
+	optional uint32 day_count = 4; //发现天数
+	optional uint32 first_time = 5; //首次时间
+	optional uint32 last_time = 6; //末次时间
+	repeated uint32 day_values = 7 [packed=true]; //日期列表
+	repeated uint32 day_stats = 8 [packed=true]; //按天统计值
+}

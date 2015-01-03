@@ -1,0 +1,47 @@
+{
+    A010001:"qq.com",
+    A010002:"888001",
+    H010014:1361232343,
+    B050016:120,
+    props:[
+        {
+            code:"B010001",
+            value:"张三丰",
+            protocol:"qq",
+            action:"1"
+        },
+        {
+            B010001:"张三峰",
+            protocol:"qq1",
+            action:"1"
+        },
+        {
+            B010002:"北京市东城天安门",
+            protocol:"qq2",
+            action:"1"
+        },
+        {
+            code:"B010002",
+            value:"天津市山西路",
+            protocol:"r3",
+            action:"1"
+        }
+    ]
+}
+1，
+ B010001:"张三峰"；protocol:"qq"
+  B010001:"张三峰"；B010002:"北京市东城天安门",
+  B010001:"张三峰"；protocol:"qq1"
+    B010001:"张三峰" AND/OR B010001:"张三丰"
+  (B010002:"天安门" protocol:"qq1")and (B010001:"张三丰"；protocol:"qq")
+  
+B010001:"张三丰"；protocol:"qq"；action:"1"；B010001:"张三峰"
+
+
+ B010001:"张三峰",
+            protocol:"qq1",
+            action:"1"
+       ,B010002:"北京市东城天安门",
+            protocol:"qq1",
+            action:"1"
+

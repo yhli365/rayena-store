@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+	<property>
+		<name>props.codes</name>
+		<value>B010011,B010012,B010013,B010014,B010015,B010026,B010027</value>
+		<description>单值属性编码列表</description>
+	</property>
+	<property>
+		<name>multiprops.codes</name>
+		<value>B022001,B022002,B022003</value>
+		<description>多值属性编码列表</description>
+	</property>
+	<property>
+		<name>props.suffix.values</name>
+		<value>H,I,J,K,L</value>
+	</property>
+	<property>
+		<name>multiprops.suffix.values</name>
+		<value>h,i,j,k,l,m,n,o,p,q</value>
+	</property>
+	<property>
+		<name>id.start</name>
+		<value>123456</value>
+		<description>对象标识(开始序号)</description>
+	</property>
+	<property>
+		<name>id.num</name>
+		<value>50000000</value>
+		<description>对象标识(数目)</description>
+	</property>
+	<property>
+		<name>A010001</name>
+		<value>qq.com,baidu.com,taobao.com,163.com,sina.com</value>
+		<description>对象类型</description>
+	</property>
+	<property>
+		<name>B050016</name>
+		<value>116,120</value>
+		<description>数据来源(维度)</description>
+	</property>
+	<property>
+		<name>H010001</name>
+		<value>1030001,1030002</value>
+		<description>应用(维度)</description>
+	</property>
+	<property>
+		<name>H010003</name>
+		<value>16,19</value>
+		<description>行为(维度)</description>
+	</property>
+</configuration>

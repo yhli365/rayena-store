@@ -1,0 +1,296 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.yun</groupId>
+	<artifactId>rayena-store</artifactId>
+	<version>1.0</version>
+	<packaging>jar</packaging>
+	<name>rayena-store</name>
+	<organization>
+		<name>xx</name>
+		<url>http://www.xx.com</url>
+	</organization>
+
+	<properties>
+		<hadoop.version>2.5.0-cdh5.2.0</hadoop.version>
+		<hbase.version>0.98.6-cdh5.2.0</hbase.version>
+		<protobuf.version>2.5.0</protobuf.version>
+		<jdom.version>2.0.1</jdom.version>
+		<slf4j.version>1.7.1</slf4j.version>
+		<log4j.version>1.2.17</log4j.version>
+		<junit.version>4.10</junit.version>
+		<!-- plugin -->
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<jdk.version>1.7</jdk.version>
+		<maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
+	</properties>
+
+	<dependencies>
+		<!-- hadoop2 -->
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-client</artifactId>
+			<version>${hadoop.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-mapreduce-examples</artifactId>
+			<version>${hadoop.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<!-- hbase -->
+		<dependency>
+			<groupId>org.apache.hbase</groupId>
+			<artifactId>hbase-client</artifactId>
+			<version>${hbase.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.hbase</groupId>
+			<artifactId>hbase-examples</artifactId>
+			<version>${hbase.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<!-- other -->
+		<dependency>
+			<groupId>org.jdom</groupId>
+			<artifactId>jdom</artifactId>
+			<version>${jdom.version}</version>
+		</dependency>
+		<!-- logger -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+			<version>${log4j.version}</version>
+		</dependency>
+		<!-- test -->
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>${junit.version}</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<finalName>ayena-store-${project.version}</finalName>
+		<plugins>
+			<!-- @site http://maven.apache.org/plugins/index.html -->
+			<!-- eclipse -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-eclipse-plugin</artifactId>
+				<version>2.9</version>
+				<configuration>
+					<downloadSources>true</downloadSources>
+					<downloadJavadocs>false</downloadJavadocs>
+					<additionalConfig>
+						<file>
+							<name>.settings/org.eclipse.core.resources.prefs</name>
+							<content>
+						                <![CDATA[eclipse.preferences.version=1${line.separator}encoding/<project>=${project.build.sourceEncoding}${line.separator}]]>
+							</content>
+						</file>
+					</additionalConfig>
+					<classpathContainers>
+						<classpathContainer>org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7</classpathContainer>
+					</classpathContainers>
+				</configuration>
+			</plugin>
+			<!-- source -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>2.2.1</version>
+			</plugin>
+			<!-- resource -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>2.6</version>
+				<configuration>
+					<encoding>${project.build.sourceEncoding}</encoding>
+				</configuration>
+			</plugin>
+			<!-- compiler -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>2.5.1</version>
+				<configuration>
+					<source>${jdk.version}</source>
+					<target>${jdk.version}</target>
+					<encoding>${project.build.sourceEncoding}</encoding>
+					<showWarnings>true</showWarnings>
+					<showDeprecation>true</showDeprecation>
+				</configuration>
+			</plugin>
+			<!-- test -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.16</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.apache.maven.surefire</groupId>
+						<artifactId>surefire-junit47</artifactId>
+						<version>2.16</version>
+					</dependency>
+				</dependencies>
+				<configuration>
+					<parallel>methods</parallel>
+					<threadCount>10</threadCount>
+					<includes>
+						<include>**/*Test.java</include>
+					</includes>
+				</configuration>
+			</plugin>
+			<!-- dependency -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>2.8</version>
+				<configuration>
+					<!-- <outputDirectory>lib</outputDirectory> -->
+					<excludeScope>provided</excludeScope>
+					<!-- scope: compile,runtime,test,provided,system -->
+					<!-- <includeScope>runtime</includeScope> -->
+					<!-- <excludeScope>test</excludeScope> -->
+					<!-- <excludeArtifactIds>hadoop-client,hbase-client</excludeArtifactIds> -->
+					<!-- <excludeTransitive>true</excludeTransitive> -->
+				</configuration>
+			</plugin>
+			<!-- jar -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>2.4</version>
+				<configuration>
+					<archive>
+						<manifest>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+							<addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+							<addClasspath>false</addClasspath>
+							<mainClass>com.run.ayena.store.StoreAppDriver</mainClass>
+						</manifest>
+						<manifestSections>
+							<manifestSection>
+								<name>build</name>
+								<manifestEntries>
+									<buildDate>${maven.build.timestamp}</buildDate>
+								</manifestEntries>
+							</manifestSection>
+						</manifestSections>
+					</archive>
+				</configuration>
+			</plugin>
+			<!-- clean -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-clean-plugin</artifactId>
+				<version>2.5</version>
+				<configuration>
+					<verbose>false</verbose>
+					<filesets>
+						<fileset>
+							<directory>target/gen-java</directory>
+							<directory>lib</directory>
+						</fileset>
+					</filesets>
+				</configuration>
+			</plugin>
+			<!-- install -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-install-plugin</artifactId>
+				<version>2.5.1</version>
+			</plugin>
+			<!-- deploy -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-deploy-plugin</artifactId>
+				<version>2.8.1</version>
+			</plugin>
+			<!-- site -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-site-plugin</artifactId>
+				<version>3.3</version>
+				<configuration>
+					<locales>zh_CN,en</locales>
+				</configuration>
+			</plugin>
+			<!-- scm -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-scm-plugin</artifactId>
+				<version>1.8.1</version>
+			</plugin>
+			<!-- compile: Protobuf -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.7</version>
+				<executions>
+					<execution>
+						<id>compile-protoc</id>
+						<phase>generate-sources</phase>
+						<configuration>
+							<target>
+								<echo message="compile-protoc..." />
+								<path id="proto.path">
+									<fileset dir="src/main/proto">
+										<include name="**/*.proto" />
+									</fileset>
+								</path>
+								<pathconvert pathsep=" " property="proto.files"
+									refid="proto.path" />
+								<echo message="required protobuf version: ${protobuf.version}" />
+								<exec executable="protoc-${protobuf.version}.exe">
+									<arg value="--version" />
+								</exec>
+								<delete dir="target/gen-java" />
+								<mkdir dir="target/gen-java" />
+								<exec executable="protoc-${protobuf.version}.exe">
+									<arg line="--java_out=target/gen-java" />
+									<arg line="-I${project.basedir}/src/main/proto" />
+									<arg line="${proto.files}" />
+								</exec>
+							</target>
+							<sourceRoot>target/gen-java</sourceRoot>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+	<reporting>
+		<plugins>
+			<!-- changelog -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-changelog-plugin</artifactId>
+				<version>2.2</version>
+				<configuration>
+					<type>range</type>
+					<range>180</range>
+					<headingDateFormat>yyyy-MM-dd</headingDateFormat>
+				</configuration>
+			</plugin>
+		</plugins>
+	</reporting>
+</project>

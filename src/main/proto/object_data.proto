@@ -1,0 +1,22 @@
+// @author Yanhong Lee
+// @date 2014-12-25 init 
+package com.run.ayena.pbf;
+option java_package = "com.run.ayena.pbf";
+
+//临时对象属性(多值属性每个值一条记录)
+message ObjectAttr {
+	required string code = 1; //属性编码
+	required string value = 2; //属性值
+}
+
+//临时对象档案
+message ObjectBase {
+	required string type = 1; //A010001对象类型
+	required string oid = 2; //A010002对象标识
+	required uint32 capture_time = 3; //H010014截获时间
+	repeated ObjectAttr props = 4; //对象单值属性列表
+	repeated ObjectAttr multiProps = 5; //对象多值属性列表
+	optional string data_source = 6; //B050016数据来源(维度)
+	optional string protocol = 7; //H010001应用(维度)
+	optional string action = 8; //H010003行为(维度)
+}
