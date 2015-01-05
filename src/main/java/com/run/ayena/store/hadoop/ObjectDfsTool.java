@@ -83,7 +83,7 @@ public class ObjectDfsTool extends Configured implements Tool {
 		CompressionType compress = CompressionType.valueOf(str);
 		CompressionCodecFactory codecFactory = new CompressionCodecFactory(conf);
 		CompressionCodec codec = codecFactory.getCodecByName(conf.get("codec",
-				"LzoCodec"));
+				"SnappyCodec")); // LzoCodec,SnappyCodec
 		if (codec == null) {
 			codec = new DefaultCodec();
 		}

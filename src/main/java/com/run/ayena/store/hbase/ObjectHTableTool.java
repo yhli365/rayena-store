@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.Cell;
@@ -37,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.run.ayena.pbf.ObjectData;
 import com.run.ayena.pbf.ObjectStore;
+import com.run.ayena.store.util.HBaseUtils;
 import com.run.ayena.store.util.ObjectPbfUtils;
 
 /**
@@ -80,10 +80,10 @@ public class ObjectHTableTool extends Configured implements Tool {
 	private int dropTable(Configuration conf, String[] args) throws IOException {
 		HBaseClient hc = new HBaseClient(conf);
 		try {
-			TableName tableName = getObjectTableName(conf, "base");
+			TableName tableName = HBaseUtils.getObjectTableName(conf, "base");
 			hc.deleteTable(tableName);
 
-			tableName = getObjectTableName(conf, "info");
+			tableName = HBaseUtils.getObjectTableName(conf, "info");
 			hc.deleteTable(tableName);
 			return 0;
 		} finally {
@@ -96,7 +96,7 @@ public class ObjectHTableTool extends Configured implements Tool {
 		HBaseClient hc = new HBaseClient(conf);
 		try {
 			// base
-			TableName tableName = getObjectTableName(conf, "base");
+			TableName tableName = HBaseUtils.getObjectTableName(conf, "base");
 			int numRegions = conf.getInt("numRegions.base", -1);
 			if (numRegions < 0) {
 				numRegions = conf.getInt("numRegions", 5);
@@ -112,14 +112,15 @@ public class ObjectHTableTool extends Configured implements Tool {
 			hc.createTable(desc, splitKeys);
 
 			// info
-			tableName = getObjectTableName(conf, "info");
+			tableName = HBaseUtils.getObjectTableName(conf, "info");
 			numRegions = conf.getInt("numRegions.info", -1);
 			if (numRegions < 0) {
 				numRegions = conf.getInt("numRegions", 5);
 			}
 			desc = new HTableDescriptor(tableName);
 			fd = new HColumnDescriptor("f");
-			fd.setBloomFilterType(BloomType.ROWCOL);
+			fd.setBloomFilterType(BloomType.ROW);
+			// fd.setBloomFilterType(BloomType.ROWCOL);
 			fd.setCompressionType(Compression.Algorithm.SNAPPY);
 			fd.setMaxVersions(1);
 			fd.setBlocksize(131072);
@@ -130,17 +131,6 @@ public class ObjectHTableTool extends Configured implements Tool {
 		} finally {
 			hc.close();
 		}
-	}
-
-	private TableName getObjectTableName(Configuration conf, String tableid) {
-		String type = conf.get("type", "ren");
-		String tablePrefix = conf.get("table.prefix");
-		String name = type + tableid;
-		if (StringUtils.isNotEmpty(tablePrefix)) {
-			name = tablePrefix + name;
-		}
-		TableName tableName = TableName.valueOf(name);
-		return tableName;
 	}
 
 	private int data(Configuration conf, String[] args) throws IOException {
@@ -182,7 +172,7 @@ public class ObjectHTableTool extends Configured implements Tool {
 	private int qbase(Configuration conf, String[] args) throws IOException,
 			NoSuchAlgorithmException {
 		HBaseClient hc = new HBaseClient(conf);
-		TableName tableName = getObjectTableName(conf, "base");
+		TableName tableName = HBaseUtils.getObjectTableName(conf, "base");
 		HTableInterface table = hc.getHTable(tableName);
 		try {
 			byte sep = 1;
@@ -244,7 +234,7 @@ public class ObjectHTableTool extends Configured implements Tool {
 	private int qinfo(Configuration conf, String[] args) throws IOException,
 			NoSuchAlgorithmException {
 		HBaseClient hc = new HBaseClient(conf);
-		TableName tableName = getObjectTableName(conf, "info");
+		TableName tableName = HBaseUtils.getObjectTableName(conf, "info");
 		HTableInterface table = hc.getHTable(tableName);
 		try {
 			byte sep = 1;
@@ -352,7 +342,8 @@ public class ObjectHTableTool extends Configured implements Tool {
 		HBaseClient hc = new HBaseClient(conf);
 		try {
 			if (conf.getBoolean("del.base", true)) {
-				TableName tableName = getObjectTableName(conf, "base");
+				TableName tableName = HBaseUtils.getObjectTableName(conf,
+						"base");
 				HTableInterface table = hc.getHTable(tableName);
 
 				byte sep = 1;
@@ -390,7 +381,8 @@ public class ObjectHTableTool extends Configured implements Tool {
 			}
 
 			if (conf.getBoolean("del.info", true)) {
-				TableName tableName = getObjectTableName(conf, "info");
+				TableName tableName = HBaseUtils.getObjectTableName(conf,
+						"info");
 				HTableInterface table = hc.getHTable(tableName);
 
 				byte sep = 1;

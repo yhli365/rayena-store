@@ -36,6 +36,7 @@ public class HTableObjectMergeMR extends Configured implements Tool {
 	@Override
 	public int run(String[] args) throws Exception {
 		Configuration conf = getConf();
+		conf.addResource("mr/HTableObjectMergeMR.xml");
 
 		MRUtils.initJobConf(conf, this);
 		Job job = Job.getInstance(conf);
@@ -60,18 +61,23 @@ public class HTableObjectMergeMR extends Configured implements Tool {
 			Mapper<BytesWritable, BytesWritable, BytesWritable, BytesWritable> {
 
 		private HTableObjectMerge om;
+		private int count;
+		private int maxCount;
 
 		@Override
 		protected void setup(Context context) throws IOException,
 				InterruptedException {
+			Configuration conf = context.getConfiguration();
 			om = new HTableObjectMerge();
-			om.setup(context.getConfiguration());
+			om.setup(conf);
+			maxCount = conf.getInt("counter.max", 1000);
 			log.info("setup ok.");
 		}
 
 		@Override
 		protected void cleanup(Context context) throws IOException,
 				InterruptedException {
+			incCounter(context);
 			om.cleanup(context.getConfiguration());
 			log.info("cleanup ok.");
 		}
@@ -82,8 +88,34 @@ public class HTableObjectMergeMR extends Configured implements Tool {
 			ObjectData.ObjectBase ob = ObjectData.ObjectBase.PARSER.parseFrom(
 					value.getBytes(), 0, value.getLength());
 			om.merge(ob);
+			count++;
+			if (count > maxCount) {
+				incCounter(context);
+				count = 0;
+			}
 		}
 
+		protected void incCounter(Context context) {
+			HTableObjectMerge.ObjectStat os = om.getObjectStat();
+			context.getCounter(ObjectCounter.NUM_NEW_INFOS).increment(
+					os.infoNewNums);
+			context.getCounter(ObjectCounter.NUM_UPDATE_INFOS).increment(
+					os.infoUptNums);
+			context.getCounter(ObjectCounter.NUM_NEW_BASES).increment(
+					os.baseNewNums);
+			context.getCounter(ObjectCounter.NUM_UPDATE_BASES).increment(
+					os.baseUptNums);
+			context.getCounter(ObjectCounter.BYTES_READ_INFOS).increment(
+					os.infoReadBytes);
+			context.getCounter(ObjectCounter.BYTES_WRITE_INFOS).increment(
+					os.infoWriteBytes);
+			context.getCounter(ObjectCounter.BYTES_READ_BASES).increment(
+					os.baseReadBytes);
+			context.getCounter(ObjectCounter.BYTES_WRITE_BASES).increment(
+					os.baseWriteBytes);
+
+			om.clearObjectStat();
+		}
 	}
 
 }

@@ -26,7 +26,7 @@
 	</property>
 	<property>
 		<name>id.num</name>
-		<value>50000000</value>
+		<value>100000000</value>
 		<description>对象标识(数目)</description>
 	</property>
 	<property>

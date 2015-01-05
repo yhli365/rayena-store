@@ -17,6 +17,16 @@ import com.run.ayena.store.StoreTestBase;
 public class ObjectHTableToolTest extends StoreTestBase {
 
 	@Test
+	public void createTablePerf() throws IOException {
+		driver("htable -Dtype=ren -DnumRegions=5 -createTable");
+	}
+
+	@Test
+	public void dropTablePerf() throws IOException {
+		driver("htable -Dtype=ren -dropTable");
+	}
+
+	@Test
 	public void createTable() throws IOException {
 		driver("htable -Dtable.prefix=ft -Dtype=ren -DnumRegions=5 -createTable");
 	}

@@ -35,7 +35,7 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
@@ -60,6 +60,7 @@ public class ObjectDataMR extends Configured implements Tool {
 	@Override
 	public int run(String[] args) throws Exception {
 		Configuration conf = getConf();
+		conf.addResource("mr/ObjectDataMR.xml");
 
 		MRUtils.initJobConf(conf, this);
 		FileSystem fs = FileSystem.get(conf);
@@ -83,31 +84,31 @@ public class ObjectDataMR extends Configured implements Tool {
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
 		job.setInputFormatClass(SequenceFileInputFormat.class);
-		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		job.setOutputFormatClass(TextOutputFormat.class);
 
 		long tStart = System.currentTimeMillis();
 		if (job.waitForCompletion(true)) {
 			long execTime = System.currentTimeMillis() - tStart;
-			analyzeResult(conf, fs, execTime, "ObjectGen_results.log");
+			analyzeResult(conf, fs, execTime, "ObjectGen_results.log",
+					getWriteDir(conf));
 			return 0;
 		}
 		return -1;
 	}
 
 	private void analyzeResult(Configuration conf, FileSystem fs,
-			long execTime, String resFileName) throws IOException {
-		Path reduceFile = new Path(getWriteDir(conf), "part-r-00000");
-
+			long execTime, String resFileName, Path resDir) throws IOException {
 		long tasks = 0;
 		long time = 0;
 		Map<String, Object> statMap = new HashMap<String, Object>();
 		DataInputStream in = null;
 		BufferedReader lines = null;
 		try {
-			in = new DataInputStream(fs.open(reduceFile));
+			in = new DataInputStream(fs.open(new Path(resDir, "part-r-00000")));
 			lines = new BufferedReader(new InputStreamReader(in));
 			String line;
 			while ((line = lines.readLine()) != null) {
+				// log.info("line: " + line);
 				StringTokenizer tokens = new StringTokenizer(line, " \t\n\r\f%");
 				String attr = tokens.nextToken();
 				if (attr.endsWith(":tasks")) {
@@ -167,11 +168,11 @@ public class ObjectDataMR extends Configured implements Tool {
 		resultLines.add("Total records processed: " + size);
 		resultLines.add("     Throughput rec/sec: " + size * 1000.0 / (time));
 		resultLines.add("Average IO rate rec/sec: " + med);
-		resultLines.add(" IO rate std deviation: " + stdDev);
+		resultLines.add("  IO rate std deviation: " + stdDev);
 		resultLines.add("        Cluster rec/sec: " + size * 1000.0
 				/ (execTime));
 
-		Path resFile = new Path(getWriteDir(conf), resFileName);
+		Path resFile = new Path(resDir, resFileName);
 		BufferedWriter bw = null;
 		try {
 			bw = new BufferedWriter(new OutputStreamWriter(fs.create(resFile,
@@ -301,13 +302,19 @@ public class ObjectDataMR extends Configured implements Tool {
 			Configuration conf = context.getConfiguration();
 			// create file
 			Path dst = new Path(getDataDir(conf), name);
+			FileSystem fs = FileSystem.get(conf);
+			if (fs.exists(dst)) {
+				fs.delete(dst, true);
+				log.info("delete datafile: " + dst);
+			}
+
 			String str = conf.get("compression.type",
 					CompressionType.RECORD.toString());
 			CompressionType compress = CompressionType.valueOf(str);
 			CompressionCodecFactory codecFactory = new CompressionCodecFactory(
 					conf);
 			CompressionCodec codec = codecFactory.getCodecByName(conf.get(
-					"codec", "LzoCodec"));
+					"codec", "SnappyCodec")); // LzoCodec,SnappyCodec
 			if (codec == null) {
 				codec = new DefaultCodec();
 			}

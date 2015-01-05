@@ -18,7 +18,7 @@ $ hadoop jar ayena-store-1.0.jar htable -Dtable.prefix=ft -Dtype=ren -load objec
 
 #)人对象临时档案归并入库MR
 $ hadoop jar ayena-store-1.0.jar dfs -upload object_ren.bcp /yhli/input
-$ hadoop jar ayena-store-1.0.jar dfs -Dcodec=SnappyCodec -upload object_ren.bcp /yhli/input
+$ hadoop jar ayena-store-1.0.jar dfs -Dcodec=LzoCodec -upload object_ren.bcp /yhli/input
 $ hdfs dfs -ls /yhli/input/object_ren.*
 $ hdfs dfs -get /yhli/input/object_ren.*
 
@@ -65,10 +65,15 @@ http://runs251190:8080/solr/admin/collections?action=CREATE&name=reninfo&numShar
 http://runs251190:8080/solr/reninfo/update/?stream.body=<delete><query>*:*</query></delete>&stream.contentType=text/xml;charset=utf-8&commit=true
 
 >>>>>>>>>>>>>>>>>>>性能测试
+#性能测试功能验证
 $ hdfs dfs -rm -r /testdata/ren/20150102
-$ hadoop jar ayena-store-1.0.jar object.gen -Dmapred.job.name=objectgen -DnrFiles=3 -DfileSize=100 -Ddate=20150102 -D/testdata/ren/20150102
+$ hadoop jar ayena-store-1.0.jar object.gen -Dmapreduce.job.name=objectgen -DnrFiles=2 -DfileSize=100 -Ddate=20150102 /testdata/ren/20150102
 $ hdfs dfs -ls /testdata/ren/20150102
-$ hdfs dfs -ls /benchmarks/ObjectData
+$ hdfs dfs -ls /benchmarks/ObjectData/objectgen/*/*
+
+$ hdfs dfs -rm -r /yhli/output/object_ren
+$ hadoop jar ayena-store-1.0.jar object.merge -Dtype=ren /testdata/ren/20150102 /yhli/output/object_ren
+$ hadoop jar ayena-store-1.0.jar object.merge -Dtable.prefix=ft -Dtype=ren /testdata/ren/20150102 /yhli/output/object_ren
 
 --#使用模拟数据生成MR产生
 #修改人对象数据集元数据配置(5个单值属性变更(最多3个不同值),2个多值属性变更(最多10个不同值),3个不变更)

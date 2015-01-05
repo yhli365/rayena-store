@@ -30,6 +30,7 @@ import com.google.common.collect.HashMultimap;
 import com.run.ayena.pbf.ObjectData;
 import com.run.ayena.pbf.ObjectData.ObjectBase;
 import com.run.ayena.pbf.ObjectStore;
+import com.run.ayena.store.util.HBaseUtils;
 
 /**
  * 基于HBase存储的对象归并操作.
@@ -59,6 +60,8 @@ public class HTableObjectMerge {
 	protected List<ObjectStore.StoreAttr> sbbAttrs = new ArrayList<ObjectStore.StoreAttr>(
 			1000);
 
+	protected ObjectStat objStat = new ObjectStat();
+
 	// info htable
 	protected boolean enabledInfo;
 	protected HTableInterface infoTable;
@@ -66,23 +69,32 @@ public class HTableObjectMerge {
 	protected byte[] infoQualifier = new byte[] { 'o' };
 	protected ObjectStore.StoreInfo.Builder sib = ObjectStore.StoreInfo
 			.newBuilder();
+	protected ObjectStore.StoreAttr.Builder saBuilder = ObjectStore.StoreAttr
+			.newBuilder();
 
 	public void setup(Configuration userConf) throws IOException {
 		conf = HBaseConfiguration.create();
 		conf.addResource(userConf);
 
-		String type = conf.get("type", "ren");
-		String tablePrefix = conf.get("table.prefix");
-		if (StringUtils.isNotEmpty(tablePrefix)) {
-			tablePrefix = tablePrefix + type;
-		} else {
-			tablePrefix = type;
-		}
-
 		connection = HConnectionManager.createConnection(conf);
+		String durability = userConf.get("hbase.durability", "SKIP_WAL");
+		dura = HBaseUtils.getDurability(durability);
+		boolean autoFlush = userConf.getBoolean("hbase.autoFlush", false);
+		boolean clearBufferOnFail = userConf.getBoolean(
+				"hbase.clearBufferOnFail", false);
+		long writeBufferSize = userConf.getLong("hbase.client.write.buffer",
+				1024 * 1024 * 4L);
+		log.info("<conf> hbase.durability = {}", durability);
+		log.info("<conf> hbase.autoFlush = {}", autoFlush);
+		log.info("<conf> hbase.clearBufferOnFail = {}", clearBufferOnFail);
+		log.info("<conf> hbase.writeBufferSize = {}", writeBufferSize);
+		log.info("<conf> hbase.zookeeper.quorum = {}",
+				conf.get("hbase.zookeeper.quorum"));
 
-		baseTable = connection.getTable(tablePrefix + "base");
-		dura = Durability.USE_DEFAULT;
+		baseTable = connection.getTable(HBaseUtils.getObjectTableName(conf,
+				"base"));
+		baseTable.setAutoFlush(autoFlush, clearBufferOnFail);
+		baseTable.setWriteBufferSize(writeBufferSize);
 
 		int capacity = conf.getInt("buffer.oid.capacity", 2048);
 		bb = ByteBuffer.allocateDirect(capacity);
@@ -94,7 +106,10 @@ public class HTableObjectMerge {
 
 		enabledInfo = conf.getBoolean("htable.info.enabled", true);
 		if (enabledInfo) {
-			infoTable = connection.getTable(tablePrefix + "info");
+			infoTable = connection.getTable(HBaseUtils.getObjectTableName(conf,
+					"info"));
+			infoTable.setAutoFlush(autoFlush, clearBufferOnFail);
+			infoTable.setWriteBufferSize(writeBufferSize);
 		}
 		log.info("setup ok.");
 	}
@@ -110,6 +125,14 @@ public class HTableObjectMerge {
 			connection.close();
 		}
 		log.info("cleanup ok.");
+	}
+
+	public ObjectStat getObjectStat() {
+		return this.objStat;
+	}
+
+	public void clearObjectStat() {
+		this.objStat.clear();
 	}
 
 	public void merge(ObjectData.ObjectBase odob) throws IOException {
@@ -166,8 +189,12 @@ public class HTableObjectMerge {
 		Get get = new Get(row);
 		Result r = baseTable.get(get);
 		sbbAttrs.clear();
-		if (!r.isEmpty()) {
+		if (r.isEmpty()) {
+			objStat.baseNewNums++;
+		} else {
+			objStat.baseUptNums++;
 			Cell c = r.getColumnLatestCell(baseFamily, baseQualifier);
+			objStat.baseReadBytes += c.getRowLength() + c.getValueLength();
 			ObjectStore.StoreBase ossb = ObjectStore.StoreBase.PARSER
 					.parseFrom(c.getValueArray(), c.getValueOffset(),
 							c.getValueLength());
@@ -176,8 +203,7 @@ public class HTableObjectMerge {
 				if (StringUtils.equals(sa.getProtocol(), protocol)
 						&& StringUtils.equals(sa.getAction(), action)) {
 					if (props.containsEntry(sa.getCode(), sa.getValue())) {// 旧属性值归并统计
-						ObjectStore.StoreAttr.Builder saBuilder = ObjectStore.StoreAttr
-								.newBuilder();
+						saBuilder.clear();
 						saBuilder.setCode(sa.getCode());
 						saBuilder.setValue(sa.getValue());
 						saBuilder.setProtocol(protocol);
@@ -223,8 +249,7 @@ public class HTableObjectMerge {
 		}
 		if (!props.isEmpty()) { // 新发现的属性值
 			for (Map.Entry<String, String> entry : props.entries()) {
-				ObjectStore.StoreAttr.Builder saBuilder = ObjectStore.StoreAttr
-						.newBuilder();
+				saBuilder.clear();
 				saBuilder.setCode(entry.getKey());
 				saBuilder.setValue(entry.getValue());
 				saBuilder.setProtocol(protocol);
@@ -242,12 +267,14 @@ public class HTableObjectMerge {
 		}
 
 		// Put.base
+		byte[] valueBytes = sbb.build().toByteArray();
 		sbb.clear();
 		sbb.addAllProps(sbbAttrs);
 		Put put = new Put(row, System.currentTimeMillis());
 		put.setDurability(dura);
-		put.add(baseFamily, baseQualifier, sbb.build().toByteArray());
+		put.add(baseFamily, baseQualifier, valueBytes);
 		baseTable.put(put);
+		objStat.baseWriteBytes += row.length + valueBytes.length;
 	}
 
 	private void infoMerge(ObjectBase odob, byte[] row, int ts, int dayValue)
@@ -266,18 +293,27 @@ public class HTableObjectMerge {
 		sbbAttrs.clear();
 		Get get = new Get(row);
 		Result r = infoTable.get(get);
-		if (!r.isEmpty()) {
+		if (r.isEmpty()) {
+			objStat.infoNewNums++;
+			sib.setCount(1);
+			sib.setDayCount(1);
+			sib.setFirstTime(ts);
+			sib.setLastTime(ts);
+			sib.addDayValues(dayValue);
+			sib.addDayStats(1);
+		} else {
+			objStat.infoUptNums++;
 			Cell c = r.getColumnLatestCell(baseFamily, baseQualifier);
 			ObjectStore.StoreInfo ossi = ObjectStore.StoreInfo.PARSER
 					.parseFrom(c.getValueArray(), c.getValueOffset(),
 							c.getValueLength());
+			objStat.infoReadBytes += c.getRowLength() + c.getValueLength();
 			List<ObjectStore.StoreAttr> attrs = ossi.getPropsList();
 			for (ObjectStore.StoreAttr sa : attrs) {
 				String val = props.remove(sa.getCode());
 				if (val != null) {
 					if (ts > sa.getLastTime()) { // 属性更新
-						ObjectStore.StoreAttr.Builder saBuilder = ObjectStore.StoreAttr
-								.newBuilder();
+						saBuilder.clear();
 						saBuilder.setCode(sa.getCode());
 						saBuilder.setValue(val);
 						saBuilder.setLastTime(ts);
@@ -289,8 +325,7 @@ public class HTableObjectMerge {
 					// 旧属性值或多值属性保留不变
 					if (propsMulti.remove(sa.getCode(), sa.getValue())) {
 						// 修改多值最新时间
-						ObjectStore.StoreAttr.Builder saBuilder = ObjectStore.StoreAttr
-								.newBuilder();
+						saBuilder.clear();
 						saBuilder.setCode(sa.getCode());
 						saBuilder.setValue(sa.getValue());
 						saBuilder.setLastTime(ts);
@@ -330,18 +365,10 @@ public class HTableObjectMerge {
 			}
 			sib.addAllDayValues(dayValues);
 			sib.addAllDayStats(dayStats);
-		} else {
-			sib.setCount(1);
-			sib.setDayCount(1);
-			sib.setFirstTime(ts);
-			sib.setLastTime(ts);
-			sib.addDayValues(dayValue);
-			sib.addDayStats(1);
 		}
 		if (!props.isEmpty()) { // 新发现的属性值
 			for (Map.Entry<String, String> entry : props.entrySet()) {
-				ObjectStore.StoreAttr.Builder saBuilder = ObjectStore.StoreAttr
-						.newBuilder();
+				saBuilder.clear();
 				saBuilder.setCode(entry.getKey());
 				saBuilder.setValue(entry.getValue());
 				saBuilder.setLastTime(ts);
@@ -350,8 +377,7 @@ public class HTableObjectMerge {
 		}
 		if (!propsMulti.isEmpty()) { // 新发现的属性值
 			for (Map.Entry<String, String> entry : propsMulti.entries()) {
-				ObjectStore.StoreAttr.Builder saBuilder = ObjectStore.StoreAttr
-						.newBuilder();
+				saBuilder.clear();
 				saBuilder.setCode(entry.getKey());
 				saBuilder.setValue(entry.getValue());
 				saBuilder.setLastTime(ts);
@@ -361,10 +387,34 @@ public class HTableObjectMerge {
 		sib.addAllProps(sbbAttrs);
 
 		// Put.info
+		byte[] valueBytes = sib.build().toByteArray();
 		Put put = new Put(row, System.currentTimeMillis());
 		put.setDurability(dura);
-		put.add(infoFamily, infoQualifier, sib.build().toByteArray());
+		put.add(infoFamily, infoQualifier, valueBytes);
 		infoTable.put(put);
+		objStat.infoWriteBytes += row.length + valueBytes.length;
+	}
+
+	public static class ObjectStat {
+		public long infoNewNums;
+		public long infoUptNums;
+		public long baseNewNums;
+		public long baseUptNums;
+		public long infoReadBytes;
+		public long infoWriteBytes;
+		public long baseReadBytes;
+		public long baseWriteBytes;
+
+		public void clear() {
+			infoNewNums = 0;
+			infoUptNums = 0;
+			baseNewNums = 0;
+			baseUptNums = 0;
+			infoReadBytes = 0;
+			infoWriteBytes = 0;
+			baseReadBytes = 0;
+			baseWriteBytes = 0;
+		}
 	}
 
 }
