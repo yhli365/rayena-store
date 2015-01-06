@@ -95,6 +95,7 @@ public class HTableObjectMerge {
 				"base"));
 		baseTable.setAutoFlush(autoFlush, clearBufferOnFail);
 		baseTable.setWriteBufferSize(writeBufferSize);
+		log.info("getTable ok #" + baseTable.getName());
 
 		int capacity = conf.getInt("buffer.oid.capacity", 2048);
 		bb = ByteBuffer.allocateDirect(capacity);
@@ -105,11 +106,13 @@ public class HTableObjectMerge {
 		}
 
 		enabledInfo = conf.getBoolean("htable.info.enabled", true);
+		log.info("<conf> htable.info.enabled = {}", enabledInfo);
 		if (enabledInfo) {
 			infoTable = connection.getTable(HBaseUtils.getObjectTableName(conf,
 					"info"));
 			infoTable.setAutoFlush(autoFlush, clearBufferOnFail);
 			infoTable.setWriteBufferSize(writeBufferSize);
+			log.info("getTable ok #" + infoTable.getName());
 		}
 		log.info("setup ok.");
 	}

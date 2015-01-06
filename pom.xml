@@ -58,6 +58,11 @@
 			<artifactId>jdom</artifactId>
 			<version>${jdom.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20141113</version>
+		</dependency>
 		<!-- logger -->
 		<dependency>
 			<groupId>org.slf4j</groupId>

@@ -30,13 +30,14 @@ public class HTableObjectMergeMR extends Configured implements Tool {
 			.getLogger(HTableObjectMergeMR.class);
 
 	public static void main(String[] args) throws Exception {
-		ToolRunner.run(new Configuration(), new HTableObjectMergeMR(), args);
+		Configuration conf = new Configuration();
+		conf.addResource("mr/HTableObjectMergeMR.xml");
+		ToolRunner.run(conf, new HTableObjectMergeMR(), args);
 	}
 
 	@Override
 	public int run(String[] args) throws Exception {
 		Configuration conf = getConf();
-		conf.addResource("mr/HTableObjectMergeMR.xml");
 
 		MRUtils.initJobConf(conf, this);
 		Job job = Job.getInstance(conf);

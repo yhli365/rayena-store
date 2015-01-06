@@ -27,4 +27,9 @@
 		<value>false</value>
 	</property>
 
+	<property>
+		<name>htable.info.enabled</name>
+		<value>true</value>
+	</property>
+
 </configuration>

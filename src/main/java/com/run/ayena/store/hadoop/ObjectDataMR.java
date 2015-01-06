@@ -54,13 +54,14 @@ public class ObjectDataMR extends Configured implements Tool {
 	private static long MEGA = 0x100000L;;
 
 	public static void main(String[] args) throws Exception {
-		ToolRunner.run(new Configuration(), new ObjectDataMR(), args);
+		Configuration conf = new Configuration();
+		conf.addResource("mr/ObjectDataMR.xml");
+		ToolRunner.run(conf, new ObjectDataMR(), args);
 	}
 
 	@Override
 	public int run(String[] args) throws Exception {
 		Configuration conf = getConf();
-		conf.addResource("mr/ObjectDataMR.xml");
 
 		MRUtils.initJobConf(conf, this);
 		FileSystem fs = FileSystem.get(conf);
