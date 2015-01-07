@@ -61,7 +61,7 @@ public class ObjectHTableToolTest extends StoreTestBase {
 	@Test
 	public void delete() throws IOException {
 		driver("htable -Dtable.prefix=ft -Dtype=ren -delete qq.com 888001");
-		// driver("htable -Dtable.prefix=ft -Dtype=ren -delete qq.com 888002");
+		driver("htable -Dtable.prefix=ft -Dtype=ren -delete qq.com 888002");
 	}
 
 	@Test

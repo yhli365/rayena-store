@@ -17,6 +17,7 @@
 		<hbase.version>0.98.6-cdh5.2.0</hbase.version>
 		<protobuf.version>2.5.0</protobuf.version>
 		<jdom.version>2.0.1</jdom.version>
+		<json.version>20140107</json.version>
 		<slf4j.version>1.7.1</slf4j.version>
 		<log4j.version>1.2.17</log4j.version>
 		<junit.version>4.10</junit.version>
@@ -61,7 +62,7 @@
 		<dependency>
 			<groupId>org.json</groupId>
 			<artifactId>json</artifactId>
-			<version>20141113</version>
+			<version>${json.version}</version>
 		</dependency>
 		<!-- logger -->
 		<dependency>

@@ -157,6 +157,7 @@ public class ObjectHTableTool extends Configured implements Tool {
 				.parseObjectBaseFromBcpFile(f);
 		System.out.println("record size=" + dataList.size());
 
+		conf.setBoolean("hbase.autoFlush", true); // 必须自动提交，否则未提交数据无法查询，会影响数据正确性.
 		HTableObjectMerge om = new HTableObjectMerge();
 		om.setup(conf);
 		try {

@@ -142,4 +142,14 @@ public class ValueUtils {
 		}
 	}
 
+	public static String md5str(byte[] bytes) throws IOException {
+		try {
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			byte[] md5 = md.digest(bytes);
+			return toHexString(md5);
+		} catch (NoSuchAlgorithmException e) {
+			throw new IOException("md5 error", e);
+		}
+	}
+
 }

@@ -8,8 +8,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +26,21 @@ public class ObjectPbfUtils {
 	private static final Logger log = LoggerFactory
 			.getLogger(ObjectPbfUtils.class);
 
+	private static Set<String> propCodes = new HashSet<String>();
+	private static Set<String> multipropCodes = new HashSet<String>();
+
+	public static Set<String> getPropCodes() {
+		return propCodes;
+	}
+
+	public static Set<String> getMultipropCodes() {
+		return multipropCodes;
+	}
+
 	public static List<ObjectData.ObjectBase> parseObjectBaseFromBcpFile(File f)
 			throws IOException {
+		propCodes.clear();
+		multipropCodes.clear();
 		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		BufferedReader br = new BufferedReader(new FileReader(f));
 		List<ObjectData.ObjectBase> result = new ArrayList<ObjectData.ObjectBase>();
@@ -37,6 +52,13 @@ public class ObjectPbfUtils {
 						+ ", file=" + f.getAbsolutePath());
 			}
 			String[] colMetas = line.substring(1).split("\t");
+			for (int i = 0; i < colMetas.length; i++) {
+				if (colMetas[i].startsWith("-")) {
+					propCodes.add(colMetas[i].substring(1));
+				} else if (colMetas[i].startsWith("+")) {
+					multipropCodes.add(colMetas[i].substring(1));
+				}
+			}
 			while ((line = br.readLine()) != null) {
 				if (line.startsWith("#") || line.isEmpty()) {
 					continue;

@@ -30,6 +30,7 @@ import com.google.common.collect.HashMultimap;
 import com.run.ayena.pbf.ObjectData;
 import com.run.ayena.pbf.ObjectData.ObjectBase;
 import com.run.ayena.pbf.ObjectStore;
+import com.run.ayena.store.solr.ObjectIndexProcessor;
 import com.run.ayena.store.util.HBaseUtils;
 
 /**
@@ -71,6 +72,8 @@ public class HTableObjectMerge {
 			.newBuilder();
 	protected ObjectStore.StoreAttr.Builder saBuilder = ObjectStore.StoreAttr
 			.newBuilder();
+
+	protected ObjectIndexProcessor indexProcessor;
 
 	public void setup(Configuration userConf) throws IOException {
 		conf = HBaseConfiguration.create();
@@ -114,6 +117,13 @@ public class HTableObjectMerge {
 			infoTable.setWriteBufferSize(writeBufferSize);
 			log.info("getTable ok #" + infoTable.getName());
 		}
+
+		boolean flag = conf.getBoolean("index.enabled", true);
+		log.info("<conf> index.enabled = {}", flag);
+		if (flag) {
+			indexProcessor = new ObjectIndexProcessor();
+			indexProcessor.setup(conf);
+		}
 		log.info("setup ok.");
 	}
 
@@ -126,6 +136,9 @@ public class HTableObjectMerge {
 		}
 		if (connection != null) {
 			connection.close();
+		}
+		if (indexProcessor != null) {
+			indexProcessor.cleanup(conf);
 		}
 		log.info("cleanup ok.");
 	}
@@ -270,7 +283,8 @@ public class HTableObjectMerge {
 		}
 
 		// Put.base
-		byte[] valueBytes = sbb.build().toByteArray();
+		ObjectStore.StoreBase sb = sbb.build();
+		byte[] valueBytes = sb.toByteArray();
 		sbb.clear();
 		sbb.addAllProps(sbbAttrs);
 		Put put = new Put(row, System.currentTimeMillis());
@@ -278,6 +292,10 @@ public class HTableObjectMerge {
 		put.add(baseFamily, baseQualifier, valueBytes);
 		baseTable.put(put);
 		objStat.baseWriteBytes += row.length + valueBytes.length;
+
+		if (indexProcessor != null && !props.isEmpty()) {
+			indexProcessor.indexBase(odob, sb);
+		}
 	}
 
 	private void infoMerge(ObjectBase odob, byte[] row, int ts, int dayValue)
@@ -390,12 +408,18 @@ public class HTableObjectMerge {
 		sib.addAllProps(sbbAttrs);
 
 		// Put.info
-		byte[] valueBytes = sib.build().toByteArray();
+		ObjectStore.StoreInfo si = sib.build();
+		byte[] valueBytes = si.toByteArray();
 		Put put = new Put(row, System.currentTimeMillis());
 		put.setDurability(dura);
 		put.add(infoFamily, infoQualifier, valueBytes);
 		infoTable.put(put);
 		objStat.infoWriteBytes += row.length + valueBytes.length;
+
+		if (indexProcessor != null
+				&& (!props.isEmpty() || !propsMulti.isEmpty())) {
+			indexProcessor.indexInfo(odob, si);
+		}
 	}
 
 	public static class ObjectStat {
