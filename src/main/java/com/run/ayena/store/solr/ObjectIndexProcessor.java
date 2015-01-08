@@ -11,7 +11,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -21,9 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.run.ayena.pbf.ObjectData;
-import com.run.ayena.pbf.ObjectData.ObjectBase;
-import com.run.ayena.pbf.ObjectStore;
-import com.run.ayena.store.util.ObjectPbfUtils;
+import com.run.ayena.store.util.MetaUtils;
 import com.run.ayena.store.util.ValueUtils;
 
 /**
@@ -41,14 +38,8 @@ public class ObjectIndexProcessor {
 	protected byte sep = 1;
 	protected ByteBuffer bb;
 	protected SimpleDateFormat df = new SimpleDateFormat("yyyyMMddHHmmssSSS");
-	private Set<String> propCodes;
-	private Set<String> multipropCodes;
 
 	public void setup(Configuration conf) throws IOException {
-
-		propCodes = ObjectPbfUtils.getPropCodes();
-		multipropCodes = ObjectPbfUtils.getMultipropCodes();
-
 		int capacity = conf.getInt("buffer.oid.capacity", 2048);
 		bb = ByteBuffer.allocateDirect(capacity);
 		try {
@@ -96,14 +87,13 @@ public class ObjectIndexProcessor {
 		}
 	}
 
-	public void indexBase(ObjectData.ObjectBase odob, ObjectStore.StoreBase sb)
-			throws IOException {
+	public void indexBase(ObjectData.ObjectBase ob) throws IOException {
 		bb.clear();
-		bb.put(Bytes.toBytes(odob.getType()));
+		bb.put(Bytes.toBytes(ob.getType()));
 		bb.put(sep);
-		bb.put(Bytes.toBytes(odob.getOid()));
+		bb.put(Bytes.toBytes(ob.getOid()));
 		bb.put(sep);
-		bb.put(Bytes.toBytes(odob.getDataSource()));
+		bb.put(Bytes.toBytes(ob.getDataSource()));
 		bb.flip();
 		String id = ValueUtils.md5str(Bytes.toBytes(bb));
 
@@ -111,12 +101,12 @@ public class ObjectIndexProcessor {
 		JSONObject jo = new JSONObject();
 		jo.put("id", id);
 		jo.put("H010014", System.currentTimeMillis() / 1000);
-		jo.put("A010001", odob.getType());
-		jo.put("A010002", odob.getOid());
-		jo.put("B050016", odob.getDataSource());
+		jo.put("A010001", ob.getType());
+		jo.put("A010002", ob.getOid());
+		jo.put("B050016", ob.getDataSource());
 
 		JSONArray jarr = new JSONArray();
-		for (ObjectStore.StoreAttr attr : sb.getPropsList()) {
+		for (ObjectData.ObjectAttr attr : ob.getPropsList()) {
 			JSONObject joa = new JSONObject();
 			joa.put(attr.getCode(), attr.getValue());
 			joa.put("protocol", attr.getProtocol());
@@ -128,27 +118,24 @@ public class ObjectIndexProcessor {
 		baseData.put(id, jo);
 	}
 
-	public void indexInfo(ObjectBase odob, ObjectStore.StoreInfo si)
-			throws IOException {
+	public void indexInfo(ObjectData.ObjectInfo ob) throws IOException {
 		bb.clear();
-		bb.put(Bytes.toBytes(odob.getType()));
+		bb.put(Bytes.toBytes(ob.getType()));
 		bb.put(sep);
-		bb.put(Bytes.toBytes(odob.getOid()));
+		bb.put(Bytes.toBytes(ob.getOid()));
 		bb.flip();
 		String id = ValueUtils.md5str(Bytes.toBytes(bb));
 
 		// JSON格式数据解析对象
 		JSONObject jo = new JSONObject();
 		jo.put("H010014", System.currentTimeMillis() / 1000);
-		jo.put("A010001", odob.getType());
-		jo.put("A010002", odob.getOid());
+		jo.put("A010001", ob.getType());
+		jo.put("A010002", ob.getOid());
 
 		JSONArray jarr;
-		for (ObjectStore.StoreAttr attr : si.getPropsList()) {
+		for (ObjectData.ObjectAttr attr : ob.getPropsList()) {
 			String code = attr.getCode();
-			if (propCodes.contains(code)) {
-				jo.put(code, attr.getValue());
-			} else if (multipropCodes.contains(code)) {
+			if (MetaUtils.checkCodeType(code, MetaUtils.VALUE_MULTI)) {
 				if (jo.has(code)) {
 					jarr = jo.getJSONArray(code);
 				} else {
@@ -156,6 +143,8 @@ public class ObjectIndexProcessor {
 					jo.put(code, jarr);
 				}
 				jarr.put(attr.getValue());
+			} else {
+				jo.put(code, attr.getValue());
 			}
 		}
 

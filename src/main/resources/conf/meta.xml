@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+	<property>
+		<name>props.codes</name>
+		<value>B010001,B010011,B010011,B010012,B010013,B010014,B010015,B010026,B010027
+		</value>
+		<description>单值属性编码列表</description>
+	</property>
+	<property>
+		<name>multiprops.codes</name>
+		<value>B010007,B022001,B022002,B022003</value>
+		<description>多值属性编码列表</description>
+	</property>
+</configuration>

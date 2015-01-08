@@ -161,7 +161,7 @@ public class ObjectDataGenerator {
 			oab.clear();
 			oab.setCode(code);
 			oab.setValue(md5s + value);
-			obb.addMultiProps(oab.build());
+			obb.addProps(oab.build());
 		}
 		return obb.build();
 	}

@@ -8,10 +8,8 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,21 +24,8 @@ public class ObjectPbfUtils {
 	private static final Logger log = LoggerFactory
 			.getLogger(ObjectPbfUtils.class);
 
-	private static Set<String> propCodes = new HashSet<String>();
-	private static Set<String> multipropCodes = new HashSet<String>();
-
-	public static Set<String> getPropCodes() {
-		return propCodes;
-	}
-
-	public static Set<String> getMultipropCodes() {
-		return multipropCodes;
-	}
-
 	public static List<ObjectData.ObjectBase> parseObjectBaseFromBcpFile(File f)
 			throws IOException {
-		propCodes.clear();
-		multipropCodes.clear();
 		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		BufferedReader br = new BufferedReader(new FileReader(f));
 		List<ObjectData.ObjectBase> result = new ArrayList<ObjectData.ObjectBase>();
@@ -52,13 +37,11 @@ public class ObjectPbfUtils {
 						+ ", file=" + f.getAbsolutePath());
 			}
 			String[] colMetas = line.substring(1).split("\t");
-			for (int i = 0; i < colMetas.length; i++) {
-				if (colMetas[i].startsWith("-")) {
-					propCodes.add(colMetas[i].substring(1));
-				} else if (colMetas[i].startsWith("+")) {
-					multipropCodes.add(colMetas[i].substring(1));
-				}
-			}
+
+			ObjectData.ObjectBase.Builder obb = ObjectData.ObjectBase
+					.newBuilder();
+			ObjectData.ObjectAttr.Builder oab = ObjectData.ObjectAttr
+					.newBuilder();
 			while ((line = br.readLine()) != null) {
 				if (line.startsWith("#") || line.isEmpty()) {
 					continue;
@@ -67,27 +50,27 @@ public class ObjectPbfUtils {
 				if (colValues.length != colMetas.length) {
 					log.warn("error record: " + line);
 				}
-				ObjectData.ObjectBase.Builder obb = ObjectData.ObjectBase
-						.newBuilder();
+
+				obb.clear();
 				Map<String, String> map = new HashMap<String, String>();
 				for (int i = 0; i < colMetas.length; i++) {
 					if (colValues[i].length() == 0) {
 						continue;
 					}
-					if (colMetas[i].startsWith("-")) {
-						ObjectData.ObjectAttr.Builder oab = ObjectData.ObjectAttr
-								.newBuilder();
+					String code = colMetas[i].trim();
+					int codeType = MetaUtils.getCodeType(code);
+					if (codeType == MetaUtils.VALUE_SINGLE) {
+						oab.clear();
 						oab.setCode(colMetas[i].substring(1));
 						oab.setValue(colValues[i]);
-						obb.addProps(oab);
-					} else if (colMetas[i].startsWith("+")) {
+						obb.addProps(oab.build());
+					} else if (codeType == MetaUtils.VALUE_MULTI) {
 						for (String val : colValues[i].split(",")) {
 							if (val.trim().length() > 0) {
-								ObjectData.ObjectAttr.Builder oab = ObjectData.ObjectAttr
-										.newBuilder();
-								oab.setCode(colMetas[i].substring(1));
+								oab.clear();
+								oab.setCode(code);
 								oab.setValue(val);
-								obb.addMultiProps(oab);
+								obb.addProps(oab.build());
 							}
 						}
 					} else {
@@ -105,7 +88,7 @@ public class ObjectPbfUtils {
 
 				log.info("parse record: " + (seq++));
 				System.out.println(line);
-				// System.out.println(obbo.toString());
+				// System.out.println(ob.toString());
 				System.out.println(printToString(ob));
 				result.add(ob);
 			}
@@ -118,7 +101,7 @@ public class ObjectPbfUtils {
 	}
 
 	public static String printToString(ObjectData.ObjectBase o) {
-		StringBuilder sb = new StringBuilder("{");
+		StringBuilder sb = new StringBuilder("ObjectData.ObjectBase-----{");
 		sb.append(" type: ").append(o.getType()).append("\n");
 		sb.append("  oid: ").append(o.getOid()).append("\n");
 		sb.append("  capture_time: ").append(o.getCaptureTime()).append("\n");
@@ -127,13 +110,6 @@ public class ObjectPbfUtils {
 		sb.append("  action: ").append(o.getAction()).append("\n");
 		sb.append("  props: ").append(o.getPropsList().size()).append("{");
 		for (ObjectData.ObjectAttr oa : o.getPropsList()) {
-			sb.append(oa.getCode()).append("=").append(oa.getValue())
-					.append(",");
-		}
-		sb.append("}\n");
-		sb.append("  multiProps: ").append(o.getMultiPropsList().size())
-				.append("{");
-		for (ObjectData.ObjectAttr oa : o.getMultiPropsList()) {
 			sb.append(oa.getCode()).append("=").append(oa.getValue())
 					.append(",");
 		}

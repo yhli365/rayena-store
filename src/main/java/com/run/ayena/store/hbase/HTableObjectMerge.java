@@ -28,10 +28,9 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.HashMultimap;
 import com.run.ayena.pbf.ObjectData;
-import com.run.ayena.pbf.ObjectData.ObjectBase;
-import com.run.ayena.pbf.ObjectStore;
 import com.run.ayena.store.solr.ObjectIndexProcessor;
 import com.run.ayena.store.util.HBaseUtils;
+import com.run.ayena.store.util.MetaUtils;
 
 /**
  * 基于HBase存储的对象归并操作.
@@ -56,9 +55,9 @@ public class HTableObjectMerge {
 	protected HTableInterface baseTable;
 	protected byte[] baseFamily = new byte[] { 'f' };
 	protected byte[] baseQualifier = new byte[] { 'o' };
-	protected ObjectStore.StoreBase.Builder sbb = ObjectStore.StoreBase
+	protected ObjectData.ObjectBase.Builder sbb = ObjectData.ObjectBase
 			.newBuilder();
-	protected List<ObjectStore.StoreAttr> sbbAttrs = new ArrayList<ObjectStore.StoreAttr>(
+	protected List<ObjectData.ObjectAttr> sbbAttrs = new ArrayList<ObjectData.ObjectAttr>(
 			1000);
 
 	protected ObjectStat objStat = new ObjectStat();
@@ -68,9 +67,9 @@ public class HTableObjectMerge {
 	protected HTableInterface infoTable;
 	protected byte[] infoFamily = new byte[] { 'f' };
 	protected byte[] infoQualifier = new byte[] { 'o' };
-	protected ObjectStore.StoreInfo.Builder sib = ObjectStore.StoreInfo
+	protected ObjectData.ObjectInfo.Builder sib = ObjectData.ObjectInfo
 			.newBuilder();
-	protected ObjectStore.StoreAttr.Builder saBuilder = ObjectStore.StoreAttr
+	protected ObjectData.ObjectAttr.Builder saBuilder = ObjectData.ObjectAttr
 			.newBuilder();
 
 	protected ObjectIndexProcessor indexProcessor;
@@ -186,16 +185,13 @@ public class HTableObjectMerge {
 		}
 	}
 
-	private void baseMerge(ObjectData.ObjectBase odob, byte[] row, int ts,
+	private void baseMerge(ObjectData.ObjectBase ob, byte[] row, int ts,
 			int dayValue) throws IOException {
-		String action = odob.getAction();
-		String protocol = odob.getProtocol();
+		String action = ob.getAction();
+		String protocol = ob.getProtocol();
 		// 待归并属性(编码->多值)
 		HashMultimap<String, String> props = HashMultimap.create();
-		for (ObjectData.ObjectAttr odoa : odob.getPropsList()) {
-			props.put(odoa.getCode(), odoa.getValue());
-		}
-		for (ObjectData.ObjectAttr odoa : odob.getMultiPropsList()) {
+		for (ObjectData.ObjectAttr odoa : ob.getPropsList()) {
 			props.put(odoa.getCode(), odoa.getValue());
 		}
 
@@ -211,11 +207,11 @@ public class HTableObjectMerge {
 			objStat.baseUptNums++;
 			Cell c = r.getColumnLatestCell(baseFamily, baseQualifier);
 			objStat.baseReadBytes += c.getRowLength() + c.getValueLength();
-			ObjectStore.StoreBase ossb = ObjectStore.StoreBase.PARSER
+			ObjectData.ObjectBase ossb = ObjectData.ObjectBase.PARSER
 					.parseFrom(c.getValueArray(), c.getValueOffset(),
 							c.getValueLength());
-			List<ObjectStore.StoreAttr> attrs = ossb.getPropsList();
-			for (ObjectStore.StoreAttr sa : attrs) {
+			List<ObjectData.ObjectAttr> attrs = ossb.getPropsList();
+			for (ObjectData.ObjectAttr sa : attrs) {
 				if (StringUtils.equals(sa.getProtocol(), protocol)
 						&& StringUtils.equals(sa.getAction(), action)) {
 					if (props.containsEntry(sa.getCode(), sa.getValue())) {// 旧属性值归并统计
@@ -283,10 +279,10 @@ public class HTableObjectMerge {
 		}
 
 		// Put.base
-		ObjectStore.StoreBase sb = sbb.build();
-		byte[] valueBytes = sb.toByteArray();
 		sbb.clear();
 		sbb.addAllProps(sbbAttrs);
+		byte[] valueBytes = sbb.build().toByteArray();
+
 		Put put = new Put(row, System.currentTimeMillis());
 		put.setDurability(dura);
 		put.add(baseFamily, baseQualifier, valueBytes);
@@ -294,20 +290,25 @@ public class HTableObjectMerge {
 		objStat.baseWriteBytes += row.length + valueBytes.length;
 
 		if (indexProcessor != null && !props.isEmpty()) {
-			indexProcessor.indexBase(odob, sb);
+			sbb.setType(ob.getType());
+			sbb.setOid(ob.getOid());
+			sbb.setDataSource(ob.getDataSource());
+			indexProcessor.indexBase(sbb.build());
 		}
 	}
 
-	private void infoMerge(ObjectBase odob, byte[] row, int ts, int dayValue)
-			throws IOException {
+	private void infoMerge(ObjectData.ObjectBase odob, byte[] row, int ts,
+			int dayValue) throws IOException {
 		// 待归并属性(编码->多值)
 		HashMap<String, String> props = new HashMap<String, String>();
-		for (ObjectData.ObjectAttr odoa : odob.getPropsList()) {
-			props.put(odoa.getCode(), odoa.getValue());
-		}
 		HashMultimap<String, String> propsMulti = HashMultimap.create();
-		for (ObjectData.ObjectAttr odoa : odob.getMultiPropsList()) {
-			propsMulti.put(odoa.getCode(), odoa.getValue());
+		for (ObjectData.ObjectAttr oa : odob.getPropsList()) {
+			String code = oa.getCode();
+			if (MetaUtils.checkCodeType(code, MetaUtils.VALUE_MULTI)) {
+				propsMulti.put(code, oa.getValue());
+			} else {
+				props.put(code, oa.getValue());
+			}
 		}
 
 		sib.clear();
@@ -325,12 +326,12 @@ public class HTableObjectMerge {
 		} else {
 			objStat.infoUptNums++;
 			Cell c = r.getColumnLatestCell(baseFamily, baseQualifier);
-			ObjectStore.StoreInfo ossi = ObjectStore.StoreInfo.PARSER
+			ObjectData.ObjectInfo ossi = ObjectData.ObjectInfo.PARSER
 					.parseFrom(c.getValueArray(), c.getValueOffset(),
 							c.getValueLength());
 			objStat.infoReadBytes += c.getRowLength() + c.getValueLength();
-			List<ObjectStore.StoreAttr> attrs = ossi.getPropsList();
-			for (ObjectStore.StoreAttr sa : attrs) {
+			List<ObjectData.ObjectAttr> attrs = ossi.getPropsList();
+			for (ObjectData.ObjectAttr sa : attrs) {
 				String val = props.remove(sa.getCode());
 				if (val != null) {
 					if (ts > sa.getLastTime()) { // 属性更新
@@ -408,8 +409,7 @@ public class HTableObjectMerge {
 		sib.addAllProps(sbbAttrs);
 
 		// Put.info
-		ObjectStore.StoreInfo si = sib.build();
-		byte[] valueBytes = si.toByteArray();
+		byte[] valueBytes = sib.build().toByteArray();
 		Put put = new Put(row, System.currentTimeMillis());
 		put.setDurability(dura);
 		put.add(infoFamily, infoQualifier, valueBytes);
@@ -418,7 +418,9 @@ public class HTableObjectMerge {
 
 		if (indexProcessor != null
 				&& (!props.isEmpty() || !propsMulti.isEmpty())) {
-			indexProcessor.indexInfo(odob, si);
+			sib.setType(odob.getType());
+			sib.setOid(odob.getOid());
+			indexProcessor.indexInfo(sib.build());
 		}
 	}
 

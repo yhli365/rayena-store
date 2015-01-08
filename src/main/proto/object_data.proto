@@ -3,20 +3,40 @@
 package com.run.ayena.pbf;
 option java_package = "com.run.ayena.pbf";
 
-//临时对象属性(多值属性每个值一条记录)
+//存储对象属性(多值属性每个值一条记录)
 message ObjectAttr {
 	required string code = 1; //属性编码
 	required string value = 2; //属性值
+	optional uint32 count = 3; //发现次数
+	optional uint32 day_count = 4; //发现天数
+	optional uint32 first_time = 5; //首次时间
+	optional uint32 last_time = 6; //末次时间
+	optional string protocol = 7; //H010001应用(维度)
+	optional string action = 8; //H010003行为(维度)
+	repeated uint32 day_values = 9 [packed=true]; //日期列表
+	repeated uint32 day_stats = 10 [packed=true]; //按天统计值
 }
 
-//临时对象档案
+//存储对象档案基本信息
 message ObjectBase {
-	required string type = 1; //A010001对象类型
-	required string oid = 2; //A010002对象标识
-	required uint32 capture_time = 3; //H010014截获时间
-	repeated ObjectAttr props = 4; //对象单值属性列表
-	repeated ObjectAttr multiProps = 5; //对象多值属性列表
+	repeated ObjectAttr props = 1; //对象属性列表
+	optional string type = 3; //A010001对象类型
+	optional string oid = 4; //A010002对象标识
+	optional uint32 capture_time = 5; //H010014截获时间
 	optional string data_source = 6; //B050016数据来源(维度)
 	optional string protocol = 7; //H010001应用(维度)
 	optional string action = 8; //H010003行为(维度)
+}
+
+//存储对象最新信息
+message ObjectInfo {
+	repeated ObjectAttr props = 1; //对象属性列表
+	optional string type = 3; //A010001对象类型
+	optional string oid = 4; //A010002对象标识
+	optional uint32 count = 9; //发现次数
+	optional uint32 day_count = 10; //发现天数
+	optional uint32 first_time = 11; //首次时间
+	optional uint32 last_time = 12; //末次时间
+	repeated uint32 day_values = 13 [packed=true]; //日期列表
+	repeated uint32 day_stats = 14 [packed=true]; //按天统计值
 }

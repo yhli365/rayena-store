@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.run.ayena.pbf.ObjectData;
-import com.run.ayena.pbf.ObjectStore;
 import com.run.ayena.store.util.HBaseUtils;
 import com.run.ayena.store.util.ObjectPbfUtils;
 
@@ -203,7 +202,7 @@ public class ObjectHTableTool extends Configured implements Tool {
 				}
 				Cell c = r.getColumnLatestCell(Bytes.toBytes("f"),
 						Bytes.toBytes("o"));
-				printCell4StoreBase(c);
+				printCell4ObjectBase(c);
 			} else {
 				byte[] startRow = Bytes.add(Bytes.head(md5, 2), bytes,
 						new byte[] { sep });
@@ -220,7 +219,7 @@ public class ObjectHTableTool extends Configured implements Tool {
 				while (r != null && !r.isEmpty()) {
 					Cell c = r.getColumnLatestCell(Bytes.toBytes("f"),
 							Bytes.toBytes("o"));
-					printCell4StoreBase(c);
+					printCell4ObjectBase(c);
 					r = rs.next();
 				}
 			}
@@ -257,7 +256,7 @@ public class ObjectHTableTool extends Configured implements Tool {
 			}
 			Cell c = r.getColumnLatestCell(Bytes.toBytes("f"),
 					Bytes.toBytes("o"));
-			printCell4StoreInfo(c);
+			printCell4ObjectInfo(c);
 			return 0;
 		} finally {
 			table.close();
@@ -265,9 +264,9 @@ public class ObjectHTableTool extends Configured implements Tool {
 		}
 	}
 
-	private void printCell4StoreBase(Cell c)
+	private void printCell4ObjectBase(Cell c)
 			throws InvalidProtocolBufferException {
-		ObjectStore.StoreBase ossi = ObjectStore.StoreBase.PARSER.parseFrom(
+		ObjectData.ObjectBase ossi = ObjectData.ObjectBase.PARSER.parseFrom(
 				c.getValueArray(), c.getValueOffset(), c.getValueLength());
 		String rows = Bytes.toString(c.getRowArray(), c.getRowOffset() + 2,
 				c.getRowLength() - 2);
@@ -276,9 +275,9 @@ public class ObjectHTableTool extends Configured implements Tool {
 		sb.append("\n type: ").append(rowarr[0]);
 		sb.append("\n oid: ").append(rowarr[1]);
 		sb.append("\n data_source: ").append(rowarr[2]);
-		List<ObjectStore.StoreAttr> attrs = ossi.getPropsList();
+		List<ObjectData.ObjectAttr> attrs = ossi.getPropsList();
 		sb.append("\n props: [");
-		for (ObjectStore.StoreAttr sa : attrs) {
+		for (ObjectData.ObjectAttr sa : attrs) {
 			sb.append("\n\t{code: ").append(sa.getCode());
 			sb.append(", value: ").append(sa.getValue());
 			sb.append(", protocol: ").append(sa.getProtocol());
@@ -301,9 +300,9 @@ public class ObjectHTableTool extends Configured implements Tool {
 		System.out.println(sb.toString());
 	}
 
-	private void printCell4StoreInfo(Cell c)
+	private void printCell4ObjectInfo(Cell c)
 			throws InvalidProtocolBufferException {
-		ObjectStore.StoreInfo ossi = ObjectStore.StoreInfo.PARSER.parseFrom(
+		ObjectData.ObjectInfo ossi = ObjectData.ObjectInfo.PARSER.parseFrom(
 				c.getValueArray(), c.getValueOffset(), c.getValueLength());
 		String rows = Bytes.toString(c.getRowArray(), c.getRowOffset() + 2,
 				c.getRowLength() - 2);
@@ -321,9 +320,9 @@ public class ObjectHTableTool extends Configured implements Tool {
 					ossi.getDayStatsList().get(i));
 		}
 		sb.append("\n day_stats: ").append(map);
-		List<ObjectStore.StoreAttr> attrs = ossi.getPropsList();
+		List<ObjectData.ObjectAttr> attrs = ossi.getPropsList();
 		sb.append("\n props: [");
-		for (ObjectStore.StoreAttr sa : attrs) {
+		for (ObjectData.ObjectAttr sa : attrs) {
 			sb.append("\n     {code: ").append(sa.getCode());
 			sb.append(", value: ").append(sa.getValue());
 			sb.append(", last_time: ").append(toDateString(sa.getLastTime()));
