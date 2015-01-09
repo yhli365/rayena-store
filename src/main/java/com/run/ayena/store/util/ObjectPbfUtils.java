@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -11,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +26,22 @@ import com.run.ayena.pbf.ObjectData;
 public class ObjectPbfUtils {
 	private static final Logger log = LoggerFactory
 			.getLogger(ObjectPbfUtils.class);
+	private static MessageDigest md;
+
+	static {
+		try {
+			md = MessageDigest.getInstance("MD5");
+		} catch (NoSuchAlgorithmException e) {
+			log.error("md5 init error", e);
+		}
+	}
+
+	public static byte[] md5(ObjectData.ObjectBase ob) {
+		md.update(Bytes.toBytes(ob.getType()));
+		md.update(ObjectUtils.sepByte);
+		md.update(Bytes.toBytes(ob.getOid()));
+		return md.digest();
+	}
 
 	public static List<ObjectData.ObjectBase> parseObjectBaseFromBcpFile(File f)
 			throws IOException {
@@ -61,7 +80,7 @@ public class ObjectPbfUtils {
 					int codeType = MetaUtils.getCodeType(code);
 					if (codeType == MetaUtils.VALUE_SINGLE) {
 						oab.clear();
-						oab.setCode(colMetas[i].substring(1));
+						oab.setCode(code);
 						oab.setValue(colValues[i]);
 						obb.addProps(oab.build());
 					} else if (codeType == MetaUtils.VALUE_MULTI) {
@@ -101,7 +120,7 @@ public class ObjectPbfUtils {
 	}
 
 	public static String printToString(ObjectData.ObjectBase o) {
-		StringBuilder sb = new StringBuilder("ObjectData.ObjectBase-----{");
+		StringBuilder sb = new StringBuilder("ObjectData.ObjectBase-----\n{");
 		sb.append(" type: ").append(o.getType()).append("\n");
 		sb.append("  oid: ").append(o.getOid()).append("\n");
 		sb.append("  capture_time: ").append(o.getCaptureTime()).append("\n");

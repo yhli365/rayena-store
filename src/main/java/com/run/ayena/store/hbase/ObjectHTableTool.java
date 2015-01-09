@@ -10,6 +10,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -28,15 +29,19 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Maps;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.run.ayena.pbf.ObjectData;
+import com.run.ayena.pbf.ObjectData.ObjectBase;
 import com.run.ayena.store.util.HBaseUtils;
 import com.run.ayena.store.util.ObjectPbfUtils;
+import com.run.ayena.store.util.ValueUtils;
 
 /**
  * 对象档案归并测试.
@@ -160,8 +165,27 @@ public class ObjectHTableTool extends Configured implements Tool {
 		HTableObjectMerge om = new HTableObjectMerge();
 		om.setup(conf);
 		try {
+			Map<BytesWritable, List<ObjectBase>> dataMap = Maps.newHashMap();
 			for (ObjectData.ObjectBase ob : dataList) {
-				om.merge(ob);
+				byte[] md5 = ObjectPbfUtils.md5(ob);
+				BytesWritable key = new BytesWritable(md5);
+				List<ObjectBase> list = dataMap.get(key);
+				if (list == null) {
+					list = new ArrayList<ObjectBase>();
+					dataMap.put(key, list);
+				}
+				list.add(ob);
+			}
+			log.info("input object groups: " + dataMap.keySet().size());
+			for (Map.Entry<BytesWritable, List<ObjectBase>> e : dataMap
+					.entrySet()) {
+				om.merge(e.getKey(), e.getValue());
+				log.info("input object group: "
+						+ ValueUtils.toHexString(e.getKey().getBytes())
+						+ " => items: " + e.getValue().size());
+				for (ObjectBase ob : e.getValue()) {
+					log.info(ObjectPbfUtils.printToString(ob));
+				}
 			}
 		} finally {
 			om.cleanup(conf);
@@ -185,43 +209,30 @@ public class ObjectHTableTool extends Configured implements Tool {
 			MessageDigest md = MessageDigest.getInstance("MD5");
 			byte[] md5 = md.digest(bytes);
 
-			if (args.length > 3) {
-				bb.clear();
-				bb.put(Bytes.head(md5, 2));
-				bb.put(bytes);
+			bb.clear();
+			bb.put(Bytes.head(md5, 2));
+			bb.put(bytes);
+			int len = args.length > 6 ? 6 : args.length;
+			for (int i = 3; i < len; i++) { // 可选维度
 				bb.put(sep);
-				bb.put(Bytes.toBytes(args[3]));
-				bb.flip();
-				byte[] row = Bytes.toBytes(bb);
+				bb.put(Bytes.toBytes(args[i]));
+			}
+			bb.flip();
+			byte[] startRow = Bytes.toBytes(bb);
+			byte[] stopRow = Bytes.add(startRow, new byte[] { (byte) 255 });
 
-				Get get = new Get(row);
-				Result r = table.get(get);
-				if (r.isEmpty()) {
-					System.out.println("Result is empty!!!");
-					return 0;
-				}
+			Scan scan = new Scan(startRow, stopRow);
+			ResultScanner rs = table.getScanner(scan);
+			Result r = rs.next();
+			if (r == null || r.isEmpty()) {
+				System.out.println("Result is empty!!!");
+				return 0;
+			}
+			while (r != null && !r.isEmpty()) {
 				Cell c = r.getColumnLatestCell(Bytes.toBytes("f"),
 						Bytes.toBytes("o"));
 				printCell4ObjectBase(c);
-			} else {
-				byte[] startRow = Bytes.add(Bytes.head(md5, 2), bytes,
-						new byte[] { sep });
-				byte[] stopRow = Bytes.add(Bytes.head(md5, 2), bytes,
-						new byte[] { 2 });
-
-				Scan scan = new Scan(startRow, stopRow);
-				ResultScanner rs = table.getScanner(scan);
-				Result r = rs.next();
-				if (r == null || r.isEmpty()) {
-					System.out.println("Result is empty!!!");
-					return 0;
-				}
-				while (r != null && !r.isEmpty()) {
-					Cell c = r.getColumnLatestCell(Bytes.toBytes("f"),
-							Bytes.toBytes("o"));
-					printCell4ObjectBase(c);
-					r = rs.next();
-				}
+				r = rs.next();
 			}
 
 			return 0;
@@ -275,13 +286,13 @@ public class ObjectHTableTool extends Configured implements Tool {
 		sb.append("\n type: ").append(rowarr[0]);
 		sb.append("\n oid: ").append(rowarr[1]);
 		sb.append("\n data_source: ").append(rowarr[2]);
+		sb.append("\n protocol: ").append(rowarr[3]);
+		sb.append("\n action: ").append(rowarr[4]);
 		List<ObjectData.ObjectAttr> attrs = ossi.getPropsList();
 		sb.append("\n props: [");
 		for (ObjectData.ObjectAttr sa : attrs) {
 			sb.append("\n\t{code: ").append(sa.getCode());
 			sb.append(", value: ").append(sa.getValue());
-			sb.append(", protocol: ").append(sa.getProtocol());
-			sb.append(", action: ").append(sa.getAction());
 			sb.append(", count: ").append(sa.getCount());
 			sb.append(", day_count: ").append(sa.getDayCount());
 			sb.append(", first_time: ").append(toDateString(sa.getFirstTime()));

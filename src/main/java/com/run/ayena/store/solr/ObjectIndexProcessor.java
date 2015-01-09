@@ -104,13 +104,13 @@ public class ObjectIndexProcessor {
 		jo.put("A010001", ob.getType());
 		jo.put("A010002", ob.getOid());
 		jo.put("B050016", ob.getDataSource());
+		jo.put("H010001", ob.getProtocol());
+		jo.put("H010003", ob.getAction());
 
 		JSONArray jarr = new JSONArray();
 		for (ObjectData.ObjectAttr attr : ob.getPropsList()) {
 			JSONObject joa = new JSONObject();
 			joa.put(attr.getCode(), attr.getValue());
-			joa.put("protocol", attr.getProtocol());
-			joa.put("action", attr.getAction());
 			jarr.put(joa);
 		}
 		jo.put("props", jarr);

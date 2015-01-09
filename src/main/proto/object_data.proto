@@ -8,13 +8,11 @@ message ObjectAttr {
 	required string code = 1; //属性编码
 	required string value = 2; //属性值
 	optional uint32 count = 3; //发现次数
-	optional uint32 day_count = 4; //发现天数
-	optional uint32 first_time = 5; //首次时间
-	optional uint32 last_time = 6; //末次时间
-	optional string protocol = 7; //H010001应用(维度)
-	optional string action = 8; //H010003行为(维度)
-	repeated uint32 day_values = 9 [packed=true]; //日期列表
-	repeated uint32 day_stats = 10 [packed=true]; //按天统计值
+	optional uint32 first_time = 4; //首次时间
+	optional uint32 last_time = 5; //末次时间
+	optional uint32 day_count = 6; //发现天数
+	repeated uint32 day_values = 7 [packed=true]; //日期列表
+	repeated uint32 day_stats = 8 [packed=true]; //按天统计值
 }
 
 //存储对象档案基本信息
@@ -22,10 +20,10 @@ message ObjectBase {
 	repeated ObjectAttr props = 1; //对象属性列表
 	optional string type = 3; //A010001对象类型
 	optional string oid = 4; //A010002对象标识
-	optional uint32 capture_time = 5; //H010014截获时间
-	optional string data_source = 6; //B050016数据来源(维度)
-	optional string protocol = 7; //H010001应用(维度)
-	optional string action = 8; //H010003行为(维度)
+	optional uint32 capture_time = 5 [default=3]; //H010014截获时间
+	optional string data_source = 6 [default=""]; //B050016数据来源(维度)
+	optional string protocol = 7 [default=""]; //H010001应用(维度)
+	optional string action = 8 [default=""]; //H010003行为(维度)
 }
 
 //存储对象最新信息

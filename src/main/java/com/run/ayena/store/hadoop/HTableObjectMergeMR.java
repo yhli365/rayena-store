@@ -17,7 +17,6 @@ import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.run.ayena.pbf.ObjectData;
 import com.run.ayena.store.hbase.HTableObjectMerge;
 import com.run.ayena.store.util.MRUtils;
 
@@ -86,9 +85,10 @@ public class HTableObjectMergeMR extends Configured implements Tool {
 		@Override
 		protected void map(BytesWritable key, BytesWritable value,
 				Context context) throws IOException, InterruptedException {
-			ObjectData.ObjectBase ob = ObjectData.ObjectBase.PARSER.parseFrom(
-					value.getBytes(), 0, value.getLength());
-			om.merge(ob);
+			// ObjectData.ObjectBase ob =
+			// ObjectData.ObjectBase.PARSER.parseFrom(
+			// value.getBytes(), 0, value.getLength());
+			// om.merge(ob);
 			count++;
 			if (count > maxCount) {
 				incCounter(context);
@@ -97,25 +97,25 @@ public class HTableObjectMergeMR extends Configured implements Tool {
 		}
 
 		protected void incCounter(Context context) {
-			HTableObjectMerge.ObjectStat os = om.getObjectStat();
-			context.getCounter(ObjectCounter.NUM_NEW_INFOS).increment(
-					os.infoNewNums);
-			context.getCounter(ObjectCounter.NUM_UPDATE_INFOS).increment(
-					os.infoUptNums);
-			context.getCounter(ObjectCounter.NUM_NEW_BASES).increment(
-					os.baseNewNums);
-			context.getCounter(ObjectCounter.NUM_UPDATE_BASES).increment(
-					os.baseUptNums);
-			context.getCounter(ObjectCounter.BYTES_READ_INFOS).increment(
-					os.infoReadBytes);
-			context.getCounter(ObjectCounter.BYTES_WRITE_INFOS).increment(
-					os.infoWriteBytes);
-			context.getCounter(ObjectCounter.BYTES_READ_BASES).increment(
-					os.baseReadBytes);
-			context.getCounter(ObjectCounter.BYTES_WRITE_BASES).increment(
-					os.baseWriteBytes);
-
-			om.clearObjectStat();
+			// HTableObjectMerge.ObjectStat os = om.getObjectStat();
+			// context.getCounter(ObjectCounter.NUM_NEW_INFOS).increment(
+			// os.infoNewNums);
+			// context.getCounter(ObjectCounter.NUM_UPDATE_INFOS).increment(
+			// os.infoUptNums);
+			// context.getCounter(ObjectCounter.NUM_NEW_BASES).increment(
+			// os.baseNewNums);
+			// context.getCounter(ObjectCounter.NUM_UPDATE_BASES).increment(
+			// os.baseUptNums);
+			// context.getCounter(ObjectCounter.BYTES_READ_INFOS).increment(
+			// os.infoReadBytes);
+			// context.getCounter(ObjectCounter.BYTES_WRITE_INFOS).increment(
+			// os.infoWriteBytes);
+			// context.getCounter(ObjectCounter.BYTES_READ_BASES).increment(
+			// os.baseReadBytes);
+			// context.getCounter(ObjectCounter.BYTES_WRITE_BASES).increment(
+			// os.baseWriteBytes);
+			//
+			// om.clearObjectStat();
 		}
 	}
 

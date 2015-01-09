@@ -12,6 +12,8 @@ import org.apache.hadoop.util.Tool;
  * 
  */
 public class MRUtils {
+	
+	
 
 	public static void initJobConf(Configuration conf, Tool tool) {
 		String key = MRJobConfig.JOB_NAME;
@@ -22,5 +24,7 @@ public class MRUtils {
 			conf.set(key, val);
 		}
 	}
+	
+	
 
 }

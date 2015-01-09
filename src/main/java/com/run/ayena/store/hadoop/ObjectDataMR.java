@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import com.run.ayena.pbf.ObjectData;
 import com.run.ayena.store.util.MRUtils;
 import com.run.ayena.store.util.ObjectDataGenerator;
+import com.run.ayena.store.util.ObjectPbfUtils;
 
 /**
  * @author Yanhong Lee
@@ -344,8 +345,13 @@ public class ObjectDataMR extends Configured implements Tool {
 						ObjectData.ObjectBase ob = odg.genBase();
 						byte[] bytes = ob.toByteArray();
 						val.set(bytes, 0, bytes.length);
-						writer.append(key, val);
 						totalBytes += bytes.length;
+
+						bytes = ObjectPbfUtils.md5(ob);
+						key.set(bytes, 0, bytes.length);
+						totalBytes += bytes.length;
+
+						writer.append(key, val);
 					}
 					context.setStatus("writing " + name + "@"
 							+ (totalSize - nrRemaining) + "/" + totalSize
