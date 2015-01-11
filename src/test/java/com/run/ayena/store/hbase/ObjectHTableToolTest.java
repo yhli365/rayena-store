@@ -27,21 +27,6 @@ public class ObjectHTableToolTest extends StoreTestBase {
 	}
 
 	@Test
-	public void data() throws IOException {
-		driver("htable -Dtable.prefix=ft -data src/test/resources/data/object_ren.bcp");
-	}
-
-	@Test
-	public void load() throws IOException {
-		driver("htable -Dtable.prefix=ft -load src/test/resources/data/object_ren.bcp");
-	}
-
-	@Test
-	public void load2() throws IOException {
-		driver("htable -Dtable.prefix=ft -load src/test/resources/data/object_ren2.bcp");
-	}
-
-	@Test
 	public void qInfo() throws IOException {
 		driver("htable -Dtable.prefix=ft -Dtype=ren -q.info qq.com 888001");
 		driver("htable -Dtable.prefix=ft -Dtype=ren -q.info qq.com 888002");
@@ -88,6 +73,21 @@ public class ObjectHTableToolTest extends StoreTestBase {
 		bb.rewind();
 		bb.get(baseRow, 2, len);
 		System.out.println("baseRow = " + Bytes.toStringBinary(baseRow));
+	}
+
+	@Test
+	public void data() throws IOException {
+		driver("htable -Dtable.prefix=ft -data src/test/resources/data/object_ren.bcp");
+	}
+
+	@Test
+	public void load() throws IOException {
+		driver("htable -Dtable.prefix=ft -load src/test/resources/data/object_ren.bcp");
+	}
+
+	@Test
+	public void load2() throws IOException {
+		driver("htable -Dtable.prefix=ft -load2 src/test/resources/data/object_ren.bcp");
 	}
 
 }

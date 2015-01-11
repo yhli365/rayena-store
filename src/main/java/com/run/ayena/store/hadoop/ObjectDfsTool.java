@@ -103,6 +103,8 @@ public class ObjectDfsTool extends Configured implements Tool {
 			for (ObjectData.ObjectBase ob : dataList) {
 				byte[] bytes = ob.toByteArray();
 				val.set(bytes, 0, bytes.length);
+				bytes = ObjectPbfUtils.md5(ob);
+				key.set(bytes, 0, bytes.length);
 				writer.append(key, val);
 				count++;
 			}

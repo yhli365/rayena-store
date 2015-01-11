@@ -24,6 +24,8 @@ import com.run.ayena.store.util.MetaUtils;
 import com.run.ayena.store.util.ValueUtils;
 
 /**
+ * 生成全文索引json格式数据.
+ * 
  * @author Yanhong Lee
  * 
  */
@@ -50,7 +52,6 @@ public class ObjectIndexProcessor {
 	}
 
 	public void cleanup(Configuration conf) throws IOException {
-
 		File dir = new File(conf.get("solrdata.dir", "solrdata"));
 		if (!dir.exists()) {
 			dir.mkdirs();

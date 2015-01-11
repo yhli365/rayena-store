@@ -65,16 +65,18 @@ public class ObjectHTableTool extends Configured implements Tool {
 			return createTable(conf, args);
 		} else if ("-dropTable".equalsIgnoreCase(cmd)) {
 			return dropTable(conf, args);
-		} else if ("-data".equalsIgnoreCase(cmd)) {
-			return data(conf, args);
-		} else if ("-load".equalsIgnoreCase(cmd)) {
-			return load(conf, args);
 		} else if ("-q.info".equalsIgnoreCase(cmd)) {
 			return qinfo(conf, args);
 		} else if ("-q.base".equalsIgnoreCase(cmd)) {
 			return qbase(conf, args);
 		} else if ("-delete".equalsIgnoreCase(cmd)) {
 			return delete(conf, args);
+		} else if ("-data".equalsIgnoreCase(cmd)) {
+			return data(conf, args);
+		} else if ("-load".equalsIgnoreCase(cmd)) {
+			return load(conf, args);
+		} else if ("-load2".equalsIgnoreCase(cmd)) {
+			return load2(conf, args);
 		} else {
 			System.err.println("Unkown command: " + cmd);
 		}
@@ -135,62 +137,6 @@ public class ObjectHTableTool extends Configured implements Tool {
 		} finally {
 			hc.close();
 		}
-	}
-
-	private int data(Configuration conf, String[] args) throws IOException {
-		File f = new File(args[1]);
-		if (!f.exists() || f.isDirectory()) {
-			throw new FileNotFoundException("Input bcp file is not found: "
-					+ f.getAbsolutePath());
-		}
-		log.info("Parse input bcp file: " + f.getAbsolutePath());
-		List<ObjectData.ObjectBase> dataList = ObjectPbfUtils
-				.parseObjectBaseFromBcpFile(f);
-		System.out.println("record size=" + dataList.size());
-		return 0;
-	}
-
-	private int load(Configuration conf, String[] args) throws IOException {
-		File f = new File(args[1]);
-		if (!f.exists() || f.isDirectory()) {
-			throw new FileNotFoundException("Input bcp file is not found: "
-					+ f.getAbsolutePath());
-		}
-		log.info("Parse input bcp file: " + f.getAbsolutePath());
-		List<ObjectData.ObjectBase> dataList = ObjectPbfUtils
-				.parseObjectBaseFromBcpFile(f);
-		System.out.println("record size=" + dataList.size());
-
-		conf.setBoolean("hbase.autoFlush", true); // 必须自动提交，否则未提交数据无法查询，会影响数据正确性.
-		HTableObjectMerge om = new HTableObjectMerge();
-		om.setup(conf);
-		try {
-			Map<BytesWritable, List<ObjectBase>> dataMap = Maps.newHashMap();
-			for (ObjectData.ObjectBase ob : dataList) {
-				byte[] md5 = ObjectPbfUtils.md5(ob);
-				BytesWritable key = new BytesWritable(md5);
-				List<ObjectBase> list = dataMap.get(key);
-				if (list == null) {
-					list = new ArrayList<ObjectBase>();
-					dataMap.put(key, list);
-				}
-				list.add(ob);
-			}
-			log.info("input object groups: " + dataMap.keySet().size());
-			for (Map.Entry<BytesWritable, List<ObjectBase>> e : dataMap
-					.entrySet()) {
-				om.merge(e.getKey(), e.getValue());
-				log.info("input object group: "
-						+ ValueUtils.toHexString(e.getKey().getBytes())
-						+ " => items: " + e.getValue().size());
-				for (ObjectBase ob : e.getValue()) {
-					log.info(ObjectPbfUtils.printToString(ob));
-				}
-			}
-		} finally {
-			om.cleanup(conf);
-		}
-		return 0;
 	}
 
 	private int qbase(Configuration conf, String[] args) throws IOException,
@@ -413,6 +359,88 @@ public class ObjectHTableTool extends Configured implements Tool {
 			}
 		} finally {
 			hc.close();
+		}
+		return 0;
+	}
+
+	private int data(Configuration conf, String[] args) throws IOException {
+		File f = new File(args[1]);
+		if (!f.exists() || f.isDirectory()) {
+			throw new FileNotFoundException("Input bcp file is not found: "
+					+ f.getAbsolutePath());
+		}
+		log.info("Parse input bcp file: " + f.getAbsolutePath());
+		List<ObjectData.ObjectBase> dataList = ObjectPbfUtils
+				.parseObjectBaseFromBcpFile(f);
+		System.out.println("record size=" + dataList.size());
+		return 0;
+	}
+
+	private int load(Configuration conf, String[] args) throws IOException {
+		File f = new File(args[1]);
+		if (!f.exists() || f.isDirectory()) {
+			throw new FileNotFoundException("Input bcp file is not found: "
+					+ f.getAbsolutePath());
+		}
+		log.info("Parse input bcp file: " + f.getAbsolutePath());
+		List<ObjectData.ObjectBase> dataList = ObjectPbfUtils
+				.parseObjectBaseFromBcpFile(f);
+		System.out.println("record size=" + dataList.size());
+
+		conf.setBoolean("hbase.autoFlush", true); // 必须自动提交，否则未提交数据无法查询，会影响数据正确性.
+		HTableObjectMerge om = new HTableObjectMerge();
+		conf.setIfUnset("index.enabled", "true");
+		conf.setIfUnset("solrdata.dir", "target/solrdata");
+		om.setup(conf);
+		try {
+			for (ObjectData.ObjectBase ob : dataList) {
+				om.merge(ob);
+			}
+		} finally {
+			om.cleanup(conf);
+		}
+		return 0;
+	}
+
+	private int load2(Configuration conf, String[] args) throws IOException {
+		File f = new File(args[1]);
+		if (!f.exists() || f.isDirectory()) {
+			throw new FileNotFoundException("Input bcp file is not found: "
+					+ f.getAbsolutePath());
+		}
+		log.info("Parse input bcp file: " + f.getAbsolutePath());
+		List<ObjectData.ObjectBase> dataList = ObjectPbfUtils
+				.parseObjectBaseFromBcpFile(f);
+		System.out.println("record size=" + dataList.size());
+
+		conf.setBoolean("hbase.autoFlush", true); // 必须自动提交，否则未提交数据无法查询，会影响数据正确性.
+		HTableObjectMerge2 om = new HTableObjectMerge2();
+		om.setup(conf);
+		try {
+			Map<BytesWritable, List<ObjectBase>> dataMap = Maps.newHashMap();
+			for (ObjectData.ObjectBase ob : dataList) {
+				byte[] md5 = ObjectPbfUtils.md5(ob);
+				BytesWritable key = new BytesWritable(md5);
+				List<ObjectBase> list = dataMap.get(key);
+				if (list == null) {
+					list = new ArrayList<ObjectBase>();
+					dataMap.put(key, list);
+				}
+				list.add(ob);
+			}
+			log.info("input object groups: " + dataMap.keySet().size());
+			for (Map.Entry<BytesWritable, List<ObjectBase>> e : dataMap
+					.entrySet()) {
+				om.merge(e.getKey(), e.getValue());
+				log.info("input object group: "
+						+ ValueUtils.toHexString(e.getKey().getBytes())
+						+ " => items: " + e.getValue().size());
+				for (ObjectBase ob : e.getValue()) {
+					log.info(ObjectPbfUtils.printToString(ob));
+				}
+			}
+		} finally {
+			om.cleanup(conf);
 		}
 		return 0;
 	}

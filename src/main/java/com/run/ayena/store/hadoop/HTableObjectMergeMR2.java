@@ -3,6 +3,7 @@ package com.run.ayena.store.hadoop;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -11,6 +12,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.counters.GenericCounter;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
@@ -21,21 +23,23 @@ import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.Parser;
 import com.run.ayena.pbf.ObjectData;
-import com.run.ayena.store.hbase.HTableObjectMerge;
+import com.run.ayena.store.hbase.HTableObjectMerge2;
 import com.run.ayena.store.util.MRUtils;
 
 /**
+ * 基于HBase存储的对象归并操作: 定期批量处理. <br/>
+ * 
  * @author Yanhong Lee
  * 
  */
-public class ObjectMergeHdfsMR extends Configured implements Tool {
+public class HTableObjectMergeMR2 extends Configured implements Tool {
 	private static Logger log = LoggerFactory
-			.getLogger(ObjectMergeHdfsMR.class);
+			.getLogger(HTableObjectMergeMR2.class);
 
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		conf.addResource("mr/ObjectMergeHdfsMR.xml");
-		ToolRunner.run(conf, new ObjectMergeHdfsMR(), args);
+		conf.addResource("mr/HTableObjectMergeMR2.xml");
+		ToolRunner.run(conf, new HTableObjectMergeMR2(), args);
 	}
 
 	@Override
@@ -44,7 +48,7 @@ public class ObjectMergeHdfsMR extends Configured implements Tool {
 
 		MRUtils.initJobConf(conf, this);
 		Job job = Job.getInstance(conf);
-		job.setJarByClass(ObjectMergeHdfsMR.class);
+		job.setJarByClass(HTableObjectMergeMR2.class);
 
 		FileSystem fs = FileSystem.get(conf);
 
@@ -92,7 +96,10 @@ public class ObjectMergeHdfsMR extends Configured implements Tool {
 				1000);
 		protected BytesWritable outValue;
 
-		protected HTableObjectMerge om = new HTableObjectMerge();
+		protected HTableObjectMerge2 om = new HTableObjectMerge2();
+
+		private int count;
+		private int maxCount;
 
 		@Override
 		protected void setup(Context context) throws IOException,
@@ -100,6 +107,8 @@ public class ObjectMergeHdfsMR extends Configured implements Tool {
 			Configuration conf = context.getConfiguration();
 			parser = ObjectData.ObjectBase.PARSER;
 			om.setup(conf);
+			maxCount = conf.getInt("counter.max", 1000);
+			log.info("<conf> counter.max = {}", maxCount);
 			log.info("setup ok.");
 		}
 
@@ -108,6 +117,7 @@ public class ObjectMergeHdfsMR extends Configured implements Tool {
 				InterruptedException {
 			Configuration conf = context.getConfiguration();
 			om.cleanup(conf);
+			incCounters(context);
 			log.info("cleanup ok.");
 		}
 
@@ -130,7 +140,22 @@ public class ObjectMergeHdfsMR extends Configured implements Tool {
 				outValue.set(valueBytes, 0, valueBytes.length);
 				context.write(key, outValue);
 			}
+			count++;
+			if (count > maxCount) {
+				incCounters(context);
+				count = 0;
+			}
 		}
+
+		protected void incCounters(Context context) {
+			Map<Enum<?>, GenericCounter> map = MRUtils.getCounters();
+			for (Map.Entry<Enum<?>, GenericCounter> e : map.entrySet()) {
+				context.getCounter(e.getKey()).increment(
+						e.getValue().getValue());
+			}
+			MRUtils.resetCounters();
+		}
+
 	}
 
 }

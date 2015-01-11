@@ -12,21 +12,34 @@ import com.run.ayena.store.util.ObjectUtils;
  * 
  */
 public class TObjectBase {
-	private int oas = 0;
+
 	private String dataSource;
 	private String protocol;
 	private String action;
 
 	private Map<String, Map<String, TObjectAttr>> attrs = Maps.newHashMap();
 
+	/**
+	 * 对象档案状态: 是否已存储
+	 */
+	private static final byte OAS_STORE = 0b00000001;
+
+	/**
+	 * 对象档案状态: 是否已归并
+	 */
+	private static final byte OAS_MERGED = 0b00000010;
+
+	/**
+	 * 对象档案状态: 是否更新
+	 */
+	private static final byte OAS_NEW = 0b00000100;
+
+	private int oas = 0;
+
 	public TObjectBase(ObjectBase ob) {
 		this.dataSource = ob.getDataSource();
 		this.protocol = ob.getProtocol();
 		this.action = ob.getAction();
-	}
-
-	public int getOas() {
-		return oas;
 	}
 
 	public String getDataSource() {
@@ -52,9 +65,8 @@ public class TObjectBase {
 	 */
 	public void merge(ObjectBase ob) {
 		int ts = ob.getCaptureTime();
-		int toas = ObjectUtils.oas(ts);
-		this.oas = toas | oas;
-		if ((oas & ObjectUtils.OAS_MERGED) == ObjectUtils.OAS_MERGED) {
+		setOasByTs(ts);
+		if (isOasMerged()) {
 			for (ObjectAttr oa : ob.getPropsList()) {
 				mergeAttrCounter(oa);
 			}
@@ -74,7 +86,7 @@ public class TObjectBase {
 	 * @param dv
 	 * @return
 	 */
-	public TObjectAttr incAttrCounter(ObjectAttr oa, int ts, Integer dv) {
+	public void incAttrCounter(ObjectAttr oa, int ts, Integer dv) {
 		String code = oa.getCode();
 		String value = oa.getValue();
 		TObjectAttr oac;
@@ -82,18 +94,16 @@ public class TObjectBase {
 		if (vmap != null) {
 			oac = vmap.get(value);
 			if (oac == null) {
-				oac = new TObjectAttr(ts, dv);
+				oac = new TObjectAttr();
 				vmap.put(value, oac);
-			} else {
-				oac.update(ts, dv);
 			}
 		} else {
 			vmap = Maps.newHashMap();
-			oac = new TObjectAttr(ts, dv);
+			oac = new TObjectAttr();
 			vmap.put(value, oac);
 			attrs.put(code, vmap);
 		}
-		return oac;
+		oac.update(ts, dv);
 	}
 
 	/**
@@ -102,8 +112,51 @@ public class TObjectBase {
 	 * @param oa
 	 */
 	public void mergeAttrCounter(ObjectAttr oa) {
-		// TODO Auto-generated method stub
+		String code = oa.getCode();
+		String value = oa.getValue();
+		TObjectAttr oac;
+		Map<String, TObjectAttr> vmap = attrs.get(code);
+		if (vmap != null) {
+			oac = vmap.get(value);
+			if (oac == null) {
+				oac = new TObjectAttr();
+				vmap.put(value, oac);
+			}
+		} else {
+			vmap = Maps.newHashMap();
+			oac = new TObjectAttr();
+			vmap.put(value, oac);
+			attrs.put(code, vmap);
+		}
+		oac.update(oa.getFirstTime(), oa.getLastTime(), oa.getCount(),
+				oa.getDayCount(), oa.getDayValuesList(), oa.getDayStatsList());
+	}
 
+	/**
+	 * 修改对象档案状态.
+	 * 
+	 * @param ts
+	 */
+	private void setOasByTs(int ts) {
+		int toas;
+		if (ts > 100) {// 临时对象
+			toas = OAS_NEW;
+		} else {
+			toas = ts;
+		}
+		this.oas = toas | oas;
+	}
+
+	public boolean isOasMerged() {
+		return (oas & OAS_MERGED) == OAS_MERGED;
+	}
+
+	public boolean isOasChanged() {
+		return (oas & OAS_NEW) == OAS_NEW;
+	}
+
+	public boolean isOasStored() {
+		return (oas & OAS_STORE) == OAS_STORE;
 	}
 
 }
