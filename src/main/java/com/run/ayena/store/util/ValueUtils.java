@@ -58,11 +58,15 @@ public class ValueUtils {
 
 	public static String toHexString(byte[] raw)
 			throws UnsupportedEncodingException {
+		return toHexString(raw, 0, raw.length);
+	}
+
+	public static String toHexString(byte[] raw, int offset, int length)
+			throws UnsupportedEncodingException {
 		byte[] hex = new byte[2 * raw.length];
 		int index = 0;
-
-		for (byte b : raw) {
-			int v = b & 0xFF;
+		for (int i = offset; i < offset + length; i++) {
+			int v = raw[i] & 0xFF;
 			hex[index++] = HEX_CHAR_TABLE[v >>> 4];
 			hex[index++] = HEX_CHAR_TABLE[v & 0xF];
 		}
@@ -101,7 +105,7 @@ public class ValueUtils {
 			if (v < 0) {
 				v += 256;
 			}
-			num = (num * 255) + v;
+			num = (num * 256) + v;
 		}
 		return num;
 	}

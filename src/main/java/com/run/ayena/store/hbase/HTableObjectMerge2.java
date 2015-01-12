@@ -115,6 +115,8 @@ public class HTableObjectMerge2 {
 			indexProcessor = new ObjectIndexProcessor();
 			indexProcessor.setup(conf);
 		}
+
+		MRUtils.initCounters(ObjectCounter.values());
 		log.info("setup ok.");
 	}
 

@@ -5,8 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
@@ -14,10 +15,9 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.counters.GenericCounter;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
-import org.apache.hadoop.util.Tool;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,57 +32,58 @@ import com.run.ayena.store.util.MRUtils;
  * @author Yanhong Lee
  * 
  */
-public class HTableObjectMergeMR2 extends Configured implements Tool {
+public class HTableObjectMergeMR2 extends RunTool {
 	private static Logger log = LoggerFactory
 			.getLogger(HTableObjectMergeMR2.class);
 
 	public static void main(String[] args) throws Exception {
-		Configuration conf = new Configuration();
-		conf.addResource("mr/HTableObjectMergeMR2.xml");
-		ToolRunner.run(conf, new HTableObjectMergeMR2(), args);
+		execMain(new HTableObjectMergeMR2(), args);
 	}
 
 	@Override
-	public int run(String[] args) throws Exception {
+	public int exec(String[] args) throws Exception {
 		Configuration conf = getConf();
 
-		MRUtils.initJobConf(conf, this);
 		Job job = Job.getInstance(conf);
 		job.setJarByClass(HTableObjectMergeMR2.class);
+		job.setMapperClass(IdentityMapper.class);
+		job.setReducerClass(ObjectMergeReducer.class);
+		job.setOutputKeyClass(BytesWritable.class);
+		job.setOutputValueClass(BytesWritable.class);
+
+		job.setInputFormatClass(SequenceFileInputFormat.class);
+		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 
 		FileSystem fs = FileSystem.get(conf);
 
 		String str = args[0];
 		for (String s : args[0].split(",")) {
 			Path p = new Path(s);
-			if (fs.globStatus(p).length == 0) {
+			FileStatus[] farr = fs.globStatus(p);
+			if (farr == null || farr.length == 0) {
 				log.warn("add objectstore path: no files - " + p);
 				continue;
 			}
 			FileInputFormat.addInputPath(job, p);
 			log.info("add objectdata path: " + s);
 		}
-		str = conf.get("objectstore.dir", "");
-		for (String s : str.split(",")) {
-			Path p = new Path(s);
-			if (fs.globStatus(p).length == 0) {
-				log.warn("add objectstore path: no files - " + p);
-				continue;
+		str = conf.get("objectstore.dir");
+		if (StringUtils.isNotEmpty(str)) {
+			for (String s : str.split(",")) {
+				Path p = new Path(s);
+				FileStatus[] farr = fs.globStatus(p);
+				if (farr == null || farr.length == 0) {
+					log.warn("add objectstore path: no files - " + p);
+					continue;
+				}
+				FileInputFormat.addInputPath(job, p);
+				log.info("add objectstore path: " + s);
 			}
-			FileInputFormat.addInputPath(job, p);
-			log.info("add objectstore path: " + s);
 		}
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
-		job.setOutputKeyClass(BytesWritable.class);
-		job.setOutputValueClass(BytesWritable.class);
-		job.setOutputFormatClass(SequenceFileOutputFormat.class);
-
-		job.setMapperClass(IdentityMapper.class);
-		job.setReducerClass(ObjectMergeReducer.class);
-
 		job.setNumReduceTasks(conf.getInt("mapreduce.job.reduces", 10));
-		if (job.waitForCompletion(true)) {
+		if (waitForCompletion(job, true)) {
 			return 0;
 		}
 		return -1;
@@ -94,7 +95,7 @@ public class HTableObjectMergeMR2 extends Configured implements Tool {
 		protected Parser<ObjectData.ObjectBase> parser;
 		protected List<ObjectData.ObjectBase> items = new ArrayList<ObjectData.ObjectBase>(
 				1000);
-		protected BytesWritable outValue;
+		protected BytesWritable outValue = new BytesWritable();
 
 		protected HTableObjectMerge2 om = new HTableObjectMerge2();
 

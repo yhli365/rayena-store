@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.StringTokenizer;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
@@ -36,13 +35,10 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.apache.hadoop.util.Tool;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.run.ayena.pbf.ObjectData;
-import com.run.ayena.store.util.MRUtils;
 import com.run.ayena.store.util.ObjectDataGenerator;
 import com.run.ayena.store.util.ObjectPbfUtils;
 
@@ -50,21 +46,18 @@ import com.run.ayena.store.util.ObjectPbfUtils;
  * @author Yanhong Lee
  * 
  */
-public class ObjectDataMR extends Configured implements Tool {
+public class ObjectDataMR extends RunTool {
 	private static Logger log = LoggerFactory.getLogger(ObjectDataMR.class);
 	private static long MEGA = 0x100000L;;
 
 	public static void main(String[] args) throws Exception {
-		Configuration conf = new Configuration();
-		conf.addResource("mr/ObjectDataMR.xml");
-		ToolRunner.run(conf, new ObjectDataMR(), args);
+		execMain(new ObjectDataMR(), args);
 	}
 
 	@Override
-	public int run(String[] args) throws Exception {
+	public int exec(String[] args) throws Exception {
 		Configuration conf = getConf();
 
-		MRUtils.initJobConf(conf, this);
 		FileSystem fs = FileSystem.get(conf);
 		conf.set("data.dir", args[0]);
 		createControlFile(conf);
@@ -77,19 +70,20 @@ public class ObjectDataMR extends Configured implements Tool {
 
 		Job job = Job.getInstance(conf);
 		job.setJarByClass(ObjectDataMR.class);
-		FileInputFormat.setInputPaths(job, getControlDir(conf));
-		FileOutputFormat.setOutputPath(job, getWriteDir(conf));
-
 		job.setMapperClass(WriteMapper.class);
 		job.setReducerClass(AccumulatingReducer.class);
-		job.setNumReduceTasks(1);
+
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
 		job.setInputFormatClass(SequenceFileInputFormat.class);
 		job.setOutputFormatClass(TextOutputFormat.class);
 
+		FileInputFormat.setInputPaths(job, getControlDir(conf));
+		FileOutputFormat.setOutputPath(job, getWriteDir(conf));
+
+		job.setNumReduceTasks(1);
 		long tStart = System.currentTimeMillis();
-		if (job.waitForCompletion(true)) {
+		if (waitForCompletion(job, true)) {
 			long execTime = System.currentTimeMillis() - tStart;
 			analyzeResult(conf, fs, execTime, "ObjectGen_results.log",
 					getWriteDir(conf));

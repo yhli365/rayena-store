@@ -16,16 +16,30 @@ $ echo 'list' | hbase shell
 #)人对象临时档案归并入库
 $ hadoop jar ayena-store-1.0.jar htable -Dtable.prefix=ft -Dtype=ren -load object_ren.bcp
 
-#)人对象临时档案归并入库MR
+#)人对象临时档案数据上传到HDFS
+$ hdfs dfs -rm -r /yhli/input
 $ hadoop jar ayena-store-1.0.jar dfs -upload object_ren.bcp /yhli/input
 $ hadoop jar ayena-store-1.0.jar dfs -Dcodec=LzoCodec -upload object_ren.bcp /yhli/input
 $ hdfs dfs -ls /yhli/input/object_ren.*
 $ hdfs dfs -get /yhli/input/object_ren.*
+$ hadoop jar ayena-store-1.0.jar dfs -text /yhli/input/object_ren.pb.snappy
+$ hadoop jar ayena-store-1.0.jar dfs -Doffset=5 -Dlen=8 -text /yhli/input/object_ren.pb.snappy
 
-$ hdfs dfs -ls /yhli/output/object_ren
-$ hdfs dfs -rm -r /yhli/output/object_ren
-$ hadoop jar ayena-store-1.0.jar object.merge -Dtable.prefix=ft -Dtype=ren /yhli/input/object_ren.pb.lzo_deflate /yhli/output/object_ren
-$ hadoop jar ayena-store-1.0.jar object.merge -Dtable.prefix=ft -Dtype=ren /yhli/input/object_ren.pb.snappy /yhli/output/object_ren2
+#)人对象临时档案归并入库MR(实时流式处理)
+$ hdfs dfs -ls /yhli/output/merge
+$ hdfs dfs -rm -r /yhli/output/merge
+$ hadoop jar ayena-store-1.0.jar object.merge -Dtable.prefix=ft -Dtype=ren /yhli/input/object_ren.pb.snappy /yhli/output/merge
+$ hadoop jar ayena-store-1.0.jar object.merge -Dtable.prefix=ft -Dtype=ren /yhli/input/object_ren.pb.lzo_deflate /yhli/output/mergeb
+
+#)人对象临时档案归并入库MR(定期批量处理)
+$ hdfs dfs -ls /yhli/output/merge2
+$ hdfs dfs -rm -r /yhli/output/merge2
+$ hadoop jar ayena-store-1.0.jar object.merge2 -Dtable.prefix=ft -Dtype=ren /yhli/input/object_ren.pb.snappy /yhli/output/merge2
+
+$ hadoop jar ayena-store-1.0.jar dfs -upload object_ren2.bcp /yhli/input
+$ hdfs dfs -rm -r /yhli/output/merge2b
+$ hadoop jar ayena-store-1.0.jar object.merge2 -Dtable.prefix=ft -Dtype=ren -Dobjectstore.dir=/yhli/output/merge2/part-r-* /yhli/input/object_ren2.pb.snappy /yhli/output/merge2b
+
 
 $ hbase shell
 > count 'ftrenbase'
