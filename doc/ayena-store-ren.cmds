@@ -40,6 +40,12 @@ $ hadoop jar ayena-store-1.0.jar dfs -upload object_ren2.bcp /yhli/input
 $ hdfs dfs -rm -r /yhli/output/merge2b
 $ hadoop jar ayena-store-1.0.jar object.merge2 -Dtable.prefix=ft -Dtype=ren -Dobjectstore.dir=/yhli/output/merge2/part-r-* /yhli/input/object_ren2.pb.snappy /yhli/output/merge2b
 
+#)人对象临时档案归并入库MR(定期批量处理2)
+$ hdfs dfs -rm -r /yhli/output3/merge
+$ hadoop jar ayena-store-1.0.jar object.mergehdfs -Dtable.prefix=ft -Dtype=ren /yhli/input/object_ren.pb.snappy /yhli/output3/merge
+
+$ hdfs dfs -rm -r /yhli/output3/imphbase
+$ hadoop jar ayena-store-1.0.jar object.imphbase -Dtable.prefix=ft -Dtype=ren /yhli/output3/merge/part-r-* /yhli/output3/imphbase
 
 $ hbase shell
 > count 'ftrenbase'

@@ -6,6 +6,8 @@ import com.run.ayena.store.hadoop.HTableObjectMergeMR;
 import com.run.ayena.store.hadoop.HTableObjectMergeMR2;
 import com.run.ayena.store.hadoop.ObjectDataMR;
 import com.run.ayena.store.hadoop.ObjectDfsTool;
+import com.run.ayena.store.hadoop.ObjectImportHBaseMR;
+import com.run.ayena.store.hadoop.ObjectMergeMR;
 import com.run.ayena.store.hbase.ObjectHTableTool;
 
 /**
@@ -29,6 +31,11 @@ public class StoreAppDriver {
 					"A map/reduce that merge temp objects by htable.");
 			pgd.addClass("object.merge2", HTableObjectMergeMR2.class,
 					"A map/reduce that merge temp objects by htable.");
+
+			pgd.addClass("object.mergehdfs", ObjectMergeMR.class,
+					"A map/reduce that merge temp objects by hdfs.");
+			pgd.addClass("object.imphbase", ObjectImportHBaseMR.class,
+					"A map/reduce that import objects into htable.");
 
 			pgd.driver(args);
 

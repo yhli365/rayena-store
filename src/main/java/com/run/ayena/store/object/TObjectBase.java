@@ -3,6 +3,7 @@ package com.run.ayena.store.object;
 import java.util.Map;
 
 import com.google.common.collect.Maps;
+import com.run.ayena.pbf.ObjectData;
 import com.run.ayena.pbf.ObjectData.ObjectAttr;
 import com.run.ayena.pbf.ObjectData.ObjectBase;
 import com.run.ayena.store.util.ObjectUtils;
@@ -12,6 +13,10 @@ import com.run.ayena.store.util.ObjectUtils;
  * 
  */
 public class TObjectBase {
+	private static ObjectData.ObjectBase.Builder obb = ObjectData.ObjectBase
+			.newBuilder();
+	private static ObjectData.ObjectAttr.Builder oab = ObjectData.ObjectAttr
+			.newBuilder();
 
 	private String dataSource;
 	private String protocol;
@@ -157,6 +162,44 @@ public class TObjectBase {
 
 	public boolean isOasStored() {
 		return (oas & OAS_STORE) == OAS_STORE;
+	}
+
+	public static String getDimId(ObjectBase ob) {
+		StringBuilder sb = new StringBuilder(ob.getDataSource());
+		sb.append(ObjectUtils.sepChar).append(ob.getProtocol());
+		sb.append(ObjectUtils.sepChar).append(ob.getAction());
+		return sb.toString();
+	}
+
+	public byte[] toObjectBaseBytes(String type, String oid) {
+		obb.clear();
+		obb.setType(type);
+		obb.setOid(oid);
+		obb.setDataSource(dataSource);
+		obb.setProtocol(protocol);
+		obb.setAction(action);
+
+		for (Map.Entry<String, Map<String, TObjectAttr>> e1 : attrs.entrySet()) {
+			String code = e1.getKey();
+			Map<String, TObjectAttr> values = e1.getValue();
+			for (Map.Entry<String, TObjectAttr> e2 : values.entrySet()) {
+				String value = e2.getKey();
+				TObjectAttr toa = e2.getValue();
+				oab.clear();
+				oab.setCode(code);
+				oab.setValue(value);
+				oab.setFirstTime(toa.firstTime);
+				oab.setLastTime(toa.lastTime);
+				oab.setCount(toa.count);
+				oab.setDayCount(toa.dayCount);
+				for (Map.Entry<Integer, Integer> de : toa.dayStats.entrySet()) {
+					oab.addDayValues(de.getKey());
+					oab.addDayStats(de.getValue());
+				}
+				obb.addProps(oab.build());
+			}
+		}
+		return obb.build().toByteArray();
 	}
 
 }

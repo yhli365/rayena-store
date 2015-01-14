@@ -5,7 +5,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -19,10 +18,8 @@ import org.apache.hadoop.io.BytesWritable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.run.ayena.pbf.ObjectData;
 import com.run.ayena.pbf.ObjectData.ObjectBase;
 import com.run.ayena.store.hadoop.ObjectCounter;
-import com.run.ayena.store.object.TObjectAttr;
 import com.run.ayena.store.object.TObjectBase;
 import com.run.ayena.store.solr.ObjectIndexProcessor;
 import com.run.ayena.store.util.HBaseUtils;
@@ -62,11 +59,6 @@ public class HTableObjectMerge2 {
 	protected HTableInterface infoTable;
 	protected byte[] infoFamily = new byte[] { 'f' };
 	protected byte[] infoQualifier = new byte[] { 'o' };
-
-	protected ObjectData.ObjectBase.Builder obb = ObjectData.ObjectBase
-			.newBuilder();
-	protected ObjectData.ObjectAttr.Builder oab = ObjectData.ObjectAttr
-			.newBuilder();
 
 	protected ObjectIndexProcessor indexProcessor;
 
@@ -149,7 +141,7 @@ public class HTableObjectMerge2 {
 		String oid = ob1.getOid();
 		dataMap.clear();
 		for (ObjectBase ob : items) {
-			String tid = getDimId(ob);
+			String tid = TObjectBase.getDimId(ob);
 			TObjectBase tob = dataMap.get(tid);
 			if (tob == null) {
 				tob = new TObjectBase(ob);
@@ -176,7 +168,7 @@ public class HTableObjectMerge2 {
 				bb.put(Bytes.toBytes(tob.getAction()));
 				bb.flip();
 
-				byte[] valueBytes = toObjectBaseBytes(otype, oid, tob);
+				byte[] valueBytes = tob.toObjectBaseBytes(otype, oid);
 				changedResults.add(valueBytes);
 
 				byte[] row = Bytes.toBytes(bb);
@@ -193,7 +185,7 @@ public class HTableObjectMerge2 {
 				MRUtils.incCounter(ObjectCounter.BASE_BYTES_WRITE,
 						valueBytes.length);
 			} else {
-				byte[] valueBytes = toObjectBaseBytes(otype, oid, tob);
+				byte[] valueBytes = tob.toObjectBaseBytes(otype, oid);
 				unchangedResults.add(valueBytes);
 				MRUtils.incCounter(ObjectCounter.BASE_NUM_UNCHANGED, 1);
 				MRUtils.incCounter(ObjectCounter.BASE_BYTES_UNCHANGED,
@@ -203,45 +195,6 @@ public class HTableObjectMerge2 {
 		if (!puts.isEmpty()) {
 			baseTable.put(puts);
 		}
-	}
-
-	private byte[] toObjectBaseBytes(String otype, String oid, TObjectBase tob) {
-		obb.clear();
-		obb.setType(otype);
-		obb.setOid(oid);
-		obb.setDataSource(tob.getDataSource());
-		obb.setProtocol(tob.getProtocol());
-		obb.setAction(tob.getAction());
-
-		Map<String, Map<String, TObjectAttr>> attrs = tob.getAttrs();
-		for (Map.Entry<String, Map<String, TObjectAttr>> e1 : attrs.entrySet()) {
-			String code = e1.getKey();
-			Map<String, TObjectAttr> values = e1.getValue();
-			for (Map.Entry<String, TObjectAttr> e2 : values.entrySet()) {
-				String value = e2.getKey();
-				TObjectAttr toa = e2.getValue();
-				oab.clear();
-				oab.setCode(code);
-				oab.setValue(value);
-				oab.setFirstTime(toa.firstTime);
-				oab.setLastTime(toa.lastTime);
-				oab.setCount(toa.count);
-				oab.setDayCount(toa.dayCount);
-				for (Map.Entry<Integer, Integer> de : toa.dayStats.entrySet()) {
-					oab.addDayValues(de.getKey());
-					oab.addDayStats(de.getValue());
-				}
-				obb.addProps(oab.build());
-			}
-		}
-		return obb.build().toByteArray();
-	}
-
-	public String getDimId(ObjectBase ob) {
-		StringBuilder sb = new StringBuilder(ob.getDataSource());
-		sb.append(ObjectUtils.sepChar).append(ob.getProtocol());
-		sb.append(ObjectUtils.sepChar).append(ob.getAction());
-		return sb.toString();
 	}
 
 	public List<byte[]> getChangedResult() {

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!-- 说明：不同记录(由对象类型*对象标识*数据来源*应用*行为组成)最多10亿条 -->
 <configuration>
 	<property>
 		<name>props.codes</name>
@@ -26,7 +27,7 @@
 	</property>
 	<property>
 		<name>id.num</name>
-		<value>100000000</value>
+		<value>25000000</value>
 		<description>对象标识(数目)</description>
 	</property>
 	<property>

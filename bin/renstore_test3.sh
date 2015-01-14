@@ -1,6 +1,6 @@
 #!/bin/bash
-# nohup sh renstore_test2.sh >> renstore_test2.out 2>&1 &
-# yanhong@bjrun.com 20150112
+# nohup sh renstore_test3.sh >> renstore_test3.out 2>&1 &
+# yanhong@bjrun.com 20150113
 # 
 # object.gen odgFiles,odgFileSize,odgIdNum
 # object.merge omReduces,omStoreDate
@@ -21,7 +21,7 @@ echo "$(date '+%Y/%m/%d %H:%M:%S') - Begin to execute test ..."
 echo "$(date '+%Y/%m/%d %H:%M:%S') - <conf> dataDir=$dataDir, sleepSeconds=$sleepSeconds"
 
 odgFilesTmp=$odgFilesInit
-cat renstore_test2.cfg | while read line
+cat renstore_test3.cfg | while read line
 do
 	mytime=$line
 	echo -e "\n$(date '+%Y/%m/%d %H:%M:%S') - exec date: $mytime"
@@ -37,9 +37,12 @@ do
 		echo "$(date '+%Y/%m/%d %H:%M:%S') - Sleep '$sleepSeconds's."
 		sleep $sleepSeconds
 		
-		echo -e "\n$(date '+%Y/%m/%d %H:%M:%S') - exec mr[object.merge] ---------------"
-		hadoop jar ayena-store-1.0.jar object.merge2 -Dmapreduce.job.name='om'$mytime -Dtype=ren -Dobjectstore.dir=/$dataDir/renstore/$omStoreDate/part-r-* -Dmapreduce.job.reduces=$omReduces /$dataDir/ren/$mytime /$dataDir/renstore/$mytime
+		echo -e "\n$(date '+%Y/%m/%d %H:%M:%S') - exec mr[object.mergehdfs] ---------------"
+		hadoop jar ayena-store-1.0.jar object.mergehdfs -Dmapreduce.job.name='omdfs'$mytime -Dtype=ren -Dobjectstore.dir=/$dataDir/renstore/$omStoreDate/*-r-* -Dmapreduce.job.reduces=$omReduces /$dataDir/ren/$mytime /$dataDir/renstore/$mytime
 		omStoreDate=$mytime
+		
+		echo -e "\n$(date '+%Y/%m/%d %H:%M:%S') - exec mr[object.imphbase] ---------------"
+		hadoop jar ayena-store-1.0.jar object.imphbase -Dmapreduce.job.name='oimphbase'$mytime -Dtype=ren /$dataDir/renstore/$mytime/part-r-* /$dataDir/renimphbase/$mytime
 		
 		echo -e "\n$(date '+%Y/%m/%d %H:%M:%S') - exec hdfs[du] ---------------"
 		hdfs dfs -du -s /hbase/data/default/ren*
