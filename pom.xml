@@ -15,6 +15,7 @@
 	<properties>
 		<hadoop.version>2.5.0-cdh5.2.0</hadoop.version>
 		<hbase.version>0.98.6-cdh5.2.0</hbase.version>
+		<jstorm.version>0.9.6.2</jstorm.version>
 		<protobuf.version>2.5.0</protobuf.version>
 		<jdom.version>2.0.1</jdom.version>
 		<json.version>20140107</json.version>
@@ -51,6 +52,25 @@
 			<groupId>org.apache.hbase</groupId>
 			<artifactId>hbase-examples</artifactId>
 			<version>${hbase.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<!-- jstorm -->
+		<dependency>
+			<groupId>com.alibaba.jstorm</groupId>
+			<artifactId>jstorm-client-extension</artifactId>
+			<version>${jstorm.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.alibaba.jstorm</groupId>
+			<artifactId>jstorm-client</artifactId>
+			<version>${jstorm.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.alibaba.jstorm</groupId>
+			<artifactId>jstorm-server</artifactId>
+			<version>${jstorm.version}</version>
 			<scope>provided</scope>
 		</dependency>
 		<!-- other -->
@@ -278,6 +298,29 @@
 						</configuration>
 						<goals>
 							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- assembly:assembly -->
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+					<archive>
+						<manifest>
+							<mainClass>storm.starter.SequenceTopology</mainClass>
+						</manifest>
+					</archive>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-assembly</id>
+						<!-- <phase>package</phase> -->
+						<goals>
+							<goal>single</goal>
 						</goals>
 					</execution>
 				</executions>

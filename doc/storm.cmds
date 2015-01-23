@@ -1,0 +1,4 @@
+
+#)ObjectGenSequenceFileTopology
+--Local
+jstorm jar ayena-store-1.0.jar com.run.ayena.store.storm.hdfs.ObjectGenSequenceFileTopology  
