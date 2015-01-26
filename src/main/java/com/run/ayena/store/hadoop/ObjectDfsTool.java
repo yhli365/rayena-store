@@ -15,8 +15,6 @@ import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.CompressionCodecFactory;
-import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
@@ -24,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.run.ayena.pbf.ObjectData;
+import com.run.ayena.store.util.MRUtils;
 import com.run.ayena.store.util.ObjectPbfUtils;
 import com.run.ayena.store.util.ValueUtils;
 
@@ -123,14 +122,8 @@ public class ObjectDfsTool extends Configured implements Tool {
 		}
 		Path dst = new Path(outdir, dstname + ".tmp");
 
-		String str = conf.get("compression.type", "block");
-		CompressionType compress = CompressionType.valueOf(str.toUpperCase());
-		CompressionCodecFactory codecFactory = new CompressionCodecFactory(conf);
-		CompressionCodec codec = codecFactory.getCodecByName(conf.get("codec",
-				"SnappyCodec")); // LzoCodec,SnappyCodec
-		if (codec == null) {
-			codec = new DefaultCodec();
-		}
+		CompressionType compress = MRUtils.getCompressionType(conf);
+		CompressionCodec codec = MRUtils.getCompressionCodec(conf);
 		SequenceFile.Writer writer = null;
 		try {
 			int count = 0;

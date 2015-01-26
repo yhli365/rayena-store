@@ -26,8 +26,6 @@ import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.SequenceFile.Writer.Option;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.CompressionCodecFactory;
-import org.apache.hadoop.io.compress.DefaultCodec;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -39,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.run.ayena.pbf.ObjectData;
+import com.run.ayena.store.util.MRUtils;
 import com.run.ayena.store.util.ObjectDataGenerator;
 import com.run.ayena.store.util.ObjectPbfUtils;
 
@@ -304,16 +303,8 @@ public class ObjectDataMR extends RunTool {
 				log.info("delete datafile: " + dst);
 			}
 
-			String str = conf.get("compression.type",
-					CompressionType.RECORD.toString());
-			CompressionType compress = CompressionType.valueOf(str);
-			CompressionCodecFactory codecFactory = new CompressionCodecFactory(
-					conf);
-			CompressionCodec codec = codecFactory.getCodecByName(conf.get(
-					"codec", "SnappyCodec")); // LzoCodec,SnappyCodec
-			if (codec == null) {
-				codec = new DefaultCodec();
-			}
+			CompressionType compress = MRUtils.getCompressionType(conf);
+			CompressionCodec codec = MRUtils.getCompressionCodec(conf);
 
 			Option optPath = SequenceFile.Writer.file(dst);
 			Option optKey = SequenceFile.Writer.keyClass(BytesWritable.class);
