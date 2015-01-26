@@ -123,9 +123,8 @@ public class ObjectDfsTool extends Configured implements Tool {
 		}
 		Path dst = new Path(outdir, dstname + ".tmp");
 
-		String str = conf.get("compression.type",
-				CompressionType.RECORD.toString());
-		CompressionType compress = CompressionType.valueOf(str);
+		String str = conf.get("compression.type", "block");
+		CompressionType compress = CompressionType.valueOf(str.toUpperCase());
 		CompressionCodecFactory codecFactory = new CompressionCodecFactory(conf);
 		CompressionCodec codec = codecFactory.getCodecByName(conf.get("codec",
 				"SnappyCodec")); // LzoCodec,SnappyCodec

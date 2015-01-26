@@ -136,4 +136,24 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
 
     abstract void doPrepare(Map conf, TopologyContext topologyContext, OutputCollector collector) throws IOException;
 
+    @Override
+	public void cleanup() {
+    	if (this.currentFile != null) {
+	    	try {
+	    		 synchronized (this.writeLock) {
+		            closeOutputFile();
+		            this.rotation++;
+	
+		            LOG.info("Performing {} file rotation actions.", this.rotationActions.size());
+		            for (RotationAction action : this.rotationActions) {
+		                action.execute(this.fs, this.currentFile);
+		            }
+		            this.currentFile = null;
+	    	    }
+	    		LOG.info("cleanup ok.");
+			} catch (IOException e) {
+				LOG.error("cleanup failed#closeOutputFile", e);
+			}
+    	}
+	}
 }

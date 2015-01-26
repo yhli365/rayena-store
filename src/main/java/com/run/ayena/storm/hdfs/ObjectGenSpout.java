@@ -20,6 +20,7 @@ import backtype.storm.tuple.Values;
 import com.run.ayena.pbf.ObjectData;
 import com.run.ayena.store.util.ObjectDataGenerator;
 import com.run.ayena.store.util.ObjectPbfUtils;
+import com.run.ayena.storm.StormUtils;
 
 public class ObjectGenSpout extends BaseRichSpout {
 	private static Logger log = LoggerFactory.getLogger(ObjectGenSpout.class);
@@ -29,25 +30,31 @@ public class ObjectGenSpout extends BaseRichSpout {
 	private ConcurrentHashMap<UUID, Values> pending;
 	private SpoutOutputCollector collector;
 
-	private int count = 0;
 	private long total = 0L;
+	private int tps;
+	private int tpsgap;
 
-	private Configuration conf;
+	private Configuration hconf;
 	private ObjectDataGenerator odg;
 
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		declarer.declare(new Fields("md5", "data"));
 	}
 
-	public void open(@SuppressWarnings("rawtypes") Map config,
+	@SuppressWarnings("unchecked")
+	public void open(@SuppressWarnings("rawtypes") Map conf,
 			TopologyContext context, SpoutOutputCollector collector) {
 		this.collector = collector;
 		this.pending = new ConcurrentHashMap<UUID, Values>();
 
-		conf = new Configuration(false);
+		this.tps = StormUtils.getInt(conf, "spout.tps", 100);
+		this.tpsgap = StormUtils.getInt(conf, "spout.tps.gap", 1000);
+		log.info("<conf> spout.tps = {}", tps);
+		log.info("<conf> spout.tps.gap = {}", tpsgap);
+		Configuration hconf = StormUtils.getHdfsConfiguration(conf);
 		odg = new ObjectDataGenerator();
 		try {
-			odg.setup(conf);
+			odg.setup(hconf);
 		} catch (IOException e) {
 			throw new FailedException("odg.setup", e);
 		}
@@ -57,7 +64,7 @@ public class ObjectGenSpout extends BaseRichSpout {
 	@Override
 	public void close() {
 		try {
-			odg.cleanup(conf);
+			odg.cleanup(hconf);
 		} catch (IOException e) {
 			throw new FailedException("odg.setup", e);
 		}
@@ -65,27 +72,35 @@ public class ObjectGenSpout extends BaseRichSpout {
 	}
 
 	public void nextTuple() {
-		ObjectData.ObjectBase ob;
+		long start = System.currentTimeMillis();
 		try {
-			ob = odg.genBase();
+			for (int i = 0; i < tps; i++) {
+				ObjectData.ObjectBase ob = odg.genBase();
+
+				byte[] data = ob.toByteArray();
+				byte[] md5 = ObjectPbfUtils.md5(ob);
+
+				Values values = new Values(md5, data);
+				UUID msgId = UUID.randomUUID();
+				this.pending.put(msgId, values);
+				this.collector.emit(values, msgId);
+
+				total++;
+			}
 		} catch (IOException e) {
 			throw new FailedException("odg.genBase", e);
 		}
-		byte[] data = ob.toByteArray();
-		byte[] md5 = ObjectPbfUtils.md5(ob);
 
-		Values values = new Values(md5, data);
-		UUID msgId = UUID.randomUUID();
-		this.pending.put(msgId, values);
-		this.collector.emit(values, msgId);
-
-		count++;
-		total++;
-		if (count > 15) {
-			count = 0;
-			System.out.println("Pending count: " + this.pending.size()
+		long wait = tpsgap - (System.currentTimeMillis() - start);
+		System.out.println("Pending count: " + this.pending.size()
+				+ ", total: " + this.total + ", wait: " + wait);
+		if (wait > 0) {
+			try {
+				Thread.sleep(wait);
+			} catch (InterruptedException e) {
+			}
+			System.out.println("Pending count_awake: " + this.pending.size()
 					+ ", total: " + this.total);
-			waitForSeconds(5);
 		}
 
 	}
@@ -98,13 +113,6 @@ public class ObjectGenSpout extends BaseRichSpout {
 	public void fail(Object msgId) {
 		log.info("fail**** RESENDING FAILED TUPLE: " + msgId);
 		this.collector.emit(this.pending.get(msgId), msgId);
-	}
-
-	public void waitForSeconds(int seconds) {
-		try {
-			Thread.sleep(seconds * 1000);
-		} catch (InterruptedException e) {
-		}
 	}
 
 }

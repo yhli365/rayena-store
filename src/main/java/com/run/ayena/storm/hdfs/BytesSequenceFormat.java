@@ -35,6 +35,9 @@ public class BytesSequenceFormat implements SequenceFormat {
 	@Override
 	public Writable key(Tuple tuple) {
 		byte[] bytes = tuple.getBinaryByField(this.keyField);
+		if (this.key == null) {
+			key = new BytesWritable();
+		}
 		this.key.set(bytes, 0, bytes.length);
 		return this.key;
 	}
@@ -42,6 +45,9 @@ public class BytesSequenceFormat implements SequenceFormat {
 	@Override
 	public Writable value(Tuple tuple) {
 		byte[] bytes = tuple.getBinaryByField(this.valueField);
+		if (this.value == null) {
+			value = new BytesWritable();
+		}
 		this.value.set(bytes, 0, bytes.length);
 		return this.value;
 	}

@@ -3,8 +3,13 @@ package com.run.ayena.storm;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
+import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,8 +31,14 @@ public class StormUtils {
 		prop.load(stream);
 
 		Config conf = new Config();
+		List<String> keys = new ArrayList<String>();
 		for (Object key : prop.keySet()) {
 			conf.put((String) key, prop.get(key));
+			keys.add((String) key);
+		}
+		Collections.sort(keys);
+		for (String key : keys) {
+			log.info("<conf> {} = {}", key, prop.get(key));
 		}
 
 		if (prop.containsKey(Config.TOPOLOGY_ACKER_EXECUTORS)) {
@@ -38,15 +49,23 @@ public class StormUtils {
 		}
 
 		if (prop.containsKey(Config.TOPOLOGY_MAX_SPOUT_PENDING)) {
-			Config.setNumAckers(
+			Config.setMaxSpoutPending(
 					conf,
 					JStormUtils.parseInt(
 							conf.get(Config.TOPOLOGY_MAX_SPOUT_PENDING), 1));
 		}
 
-		// conf.put(Config.TOPOLOGY_MAX_TASK_PARALLELISM, 6);
-		// conf.put(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS, 20);
-		// conf.put(Config.TOPOLOGY_MAX_SPOUT_PENDING, 1);
+		if (prop.containsKey(Config.TOPOLOGY_MAX_TASK_PARALLELISM)) {
+			int vi = JStormUtils.parseInt(
+					conf.get(Config.TOPOLOGY_MAX_TASK_PARALLELISM), 6);
+			conf.put(Config.TOPOLOGY_MAX_TASK_PARALLELISM, vi);
+		}
+
+		if (prop.containsKey(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS)) {
+			int vi = JStormUtils.parseInt(
+					conf.get(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS), 20);
+			conf.put(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS, vi);
+		}
 
 		int workerNum = JStormUtils.parseInt(conf.get(Config.TOPOLOGY_WORKERS),
 				1);
@@ -55,15 +74,13 @@ public class StormUtils {
 		return conf;
 	}
 
-	public static void submitTopology() {
-
-	}
-
-	public static int getInt(Config conf, String key, int defaultValue) {
+	public static int getInt(Map<String, Object> conf, String key,
+			int defaultValue) {
 		return JStormUtils.parseInt(conf.get(key), defaultValue);
 	}
 
-	public static String getString(Config conf, String key, String defaultValue) {
+	public static String getString(Map<String, Object> conf, String key,
+			String defaultValue) {
 		Object val = conf.get(key);
 		if (val == null) {
 			return defaultValue;
@@ -75,7 +92,7 @@ public class StormUtils {
 		return String.valueOf(val);
 	}
 
-	public static boolean local_mode(Config conf) {
+	public static boolean local_mode(Map<String, Object> conf) {
 		String mode = (String) conf.get(Config.STORM_CLUSTER_MODE);
 		if (mode != null) {
 			if (mode.equals("local")) {
@@ -110,6 +127,16 @@ public class StormUtils {
 			log.info("waitForSeconds# end=" + seconds);
 		} catch (InterruptedException e) {
 		}
+	}
+
+	public static Configuration getHdfsConfiguration(
+			@SuppressWarnings("rawtypes") Map conf) {
+		Configuration hconf = new Configuration();
+		for (Object key : conf.keySet()) {
+			hconf.set(String.valueOf(key), String.valueOf(conf.get(key)));
+		}
+		log.info("<hconf> fs.defaultFS = {}", hconf.get("fs.defaultFS"));
+		return hconf;
 	}
 
 }
