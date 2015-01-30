@@ -1,6 +1,7 @@
 package com.run.ayena.store.util;
 
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.SequenceFile;
@@ -76,6 +77,14 @@ public class MRUtils {
 			codec = new DefaultCodec();
 		}
 		return codec;
+	}
+
+	public static Configuration newConfiguration(Properties props) {
+		Configuration conf = new Configuration();
+		for (Object key : props.keySet()) {
+			conf.set(String.valueOf(key), String.valueOf(props.get(key)));
+		}
+		return conf;
 	}
 
 }

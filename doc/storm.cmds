@@ -1,10 +1,17 @@
 
 #)ObjectGenSequenceFileTopology
 --Local
-jstorm jar ayena-store-1.0.jar com.run.ayena.storm.hdfs.ObjectGenSequenceFileTopology og_local.prop >> og.out 2>&1 &
-tail -100f og.out
+jstorm jar ayena-store-1.0.jar com.run.ayena.storm.hdfs.ObjectGenSequenceFileTopology og_local.prop > topo.out 2>&1 &
+tail -100f topo.out
 hadoop jar ayena-store-1.0.jar dfs -text /storm/odg/20150126/renoghdfs-bolt-2-1-1422251194314.snappy
 
 --Cluster
 jstorm jar ayena-store-1.0.jar com.run.ayena.storm.hdfs.ObjectGenSequenceFileTopology og.prop
 jstorm kill og-topology
+
+#)ObjectCollectKafkaTopology
+jstorm jar ayena-store-1.0.jar com.run.ayena.storm.topo.ObjectCollectKafkaTopology > topo.out 2>&1 &
+tail -100f topo.out
+
+jstorm jar ayena-store-1.0.jar com.run.ayena.storm.hdfs.ObjectGenSequenceFileTopology ogcollect.prop
+jstorm kill ogcollect-topology

@@ -1,5 +1,6 @@
 package com.run.ayena.storm;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,10 +26,29 @@ import com.alibaba.jstorm.utils.JStormUtils;
 public class StormUtils {
 	private static Logger log = LoggerFactory.getLogger(StormUtils.class);
 
+	public static Config loadConfig(String[] args, String defFile)
+			throws IOException {
+		String file = defFile;
+		if (args.length > 0) {
+			file = args[0];
+		}
+		return loadConfig(file);
+	}
+
 	public static Config loadConfig(String file) throws IOException {
+		InputStream is;
+		File f = new File(file);
+		if (f.exists() && f.isFile()) {
+			is = new FileInputStream(file);
+		} else {
+			is = Thread.currentThread().getContextClassLoader()
+					.getResourceAsStream(file);
+		}
 		Properties prop = new Properties();
-		InputStream stream = new FileInputStream(file);
-		prop.load(stream);
+		if (is != null) {
+			prop.load(is);
+			log.info("Load strom topo config ok: {}", file);
+		}
 
 		Config conf = new Config();
 		List<String> keys = new ArrayList<String>();

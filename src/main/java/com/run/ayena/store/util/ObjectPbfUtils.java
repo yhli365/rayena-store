@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
@@ -120,8 +121,13 @@ public class ObjectPbfUtils {
 	}
 
 	public static String printToString(ObjectData.ObjectBase o) {
-		StringBuilder sb = new StringBuilder("ObjectData.ObjectBase-----\n{");
-		sb.append(" type: ").append(o.getType()).append("\n");
+		StringBuilder sb = new StringBuilder("ObjectData.ObjectBase-----{\n");
+		try {
+			sb.append("  md5: ").append(ValueUtils.toHexString(md5(o)))
+					.append("\n");
+		} catch (UnsupportedEncodingException e) {
+		}
+		sb.append("  type: ").append(o.getType()).append("\n");
 		sb.append("  oid: ").append(o.getOid()).append("\n");
 		sb.append("  capture_time: ").append(o.getCaptureTime()).append("\n");
 		sb.append("  data_source: ").append(o.getDataSource()).append("\n");
