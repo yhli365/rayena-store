@@ -6,6 +6,7 @@ import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionCodecFactory;
 import org.apache.storm.hdfs.bolt.SequenceFileBolt;
+import org.apache.storm.hdfs.bolt.format.SequenceFormat;
 import org.apache.storm.hdfs.bolt.rotation.FileRotationPolicy;
 import org.apache.storm.hdfs.bolt.rotation.FileSizeRotationPolicy;
 import org.apache.storm.hdfs.bolt.rotation.FileSizeRotationPolicy.Units;
@@ -18,8 +19,8 @@ import backtype.storm.topology.TopologyBuilder;
 
 import com.alibaba.jstorm.kafka.KafkaSpout;
 import com.run.ayena.storm.StormUtils;
-import com.run.ayena.storm.hdfs.BytesSequenceFormat;
 import com.run.ayena.storm.hdfs.DateBasedFileNameFormat;
+import com.run.ayena.storm.hdfs.ObjectKafkaSequenceFormat;
 import com.run.ayena.storm.hdfs.RenameFileSuffixAction;
 
 /**
@@ -71,7 +72,7 @@ public class ObjectCollectKafkaTopology {
 				.withExtension(".tmp");
 
 		// create sequence format instance.
-		BytesSequenceFormat format = new BytesSequenceFormat("md5", "data");
+		SequenceFormat format = new ObjectKafkaSequenceFormat();
 
 		String str = StormUtils.getString(conf, "hdfs.file.compression.type",
 				"block");

@@ -101,7 +101,7 @@ public class ObjectKafkaProducer implements Runnable {
 
 	public Properties loadConfig(String[] args) throws IOException {
 		InputStream in;
-		if (args.length > 0) {
+		if (args != null && args.length > 0) {
 			in = new FileInputStream(args[0]);
 		} else {
 			in = Thread

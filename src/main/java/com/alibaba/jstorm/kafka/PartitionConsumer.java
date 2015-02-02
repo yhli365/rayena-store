@@ -138,7 +138,9 @@ public class PartitionConsumer {
                 LOG.debug("fillmessage fetched a message:{}, offset:{}", msg.message().toString(), msg.offset());
             }
             long end = System.currentTimeMillis();
+            if (count > 0) {
             LOG.info("fetch message from partition:"+partition+", offset:" + emittingOffset+", size:"+msgs.sizeInBytes()+", count:"+count +", time:"+(end-start));
+            }
         } catch (Exception e) {
             e.printStackTrace();
             LOG.error(e.getMessage(),e);
